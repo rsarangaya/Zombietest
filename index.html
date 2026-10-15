@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>ROTTEN DEPTHS</title>
+<link rel="stylesheet" href="css/style.css">
+</head><body>
+<div id="app">
+ <div id="main">
+  <h1>☠ ROTTEN DEPTHS ☠</h1>
+  <div class="bar"><div class="meter" id="hp"><i></i><span></span></div><div class="meter" id="hu"><i></i><span></span></div></div>
+  <div class="bar"><div class="meter" id="xp"><i></i><span></span></div><div id="where"></div></div>
+  <div id="mapwrap"><canvas id="cv" width="480" height="480"></canvas><div id="hint"></div></div>
+  <div id="log" title="Click for the full message log"></div>
+ </div>
+ <div id="side">
+  <h3>BODY (tap to inspect)</h3><div id="slots"></div>
+  <h3>BACKPACK</h3><div id="inv"></div>
+  <h3 id="floorH" style="display:none">ON THE GROUND (tap to pick up)</h3><div id="floor" style="display:none"></div>
+  <div id="detail">Tap an item to inspect it.</div>
+  <div id="btns">
+   <button id="bWait" title="Wait a turn (Space)">Wait</button><button id="bRest" title="Rest until healed (R)">Rest</button><button id="bScent" title="Sniff for nearby enemies and the layout (X)">Scent</button><button id="bLog">Log</button>
+   <button id="bDown">Travel ▼ down</button><button id="bUp">Travel ▲ up</button><button id="bView">Center view</button><button id="bSound">Sound: on</button><button id="bNew">New Run</button><button id="bMenu">Menu</button>
+  </div>
+ </div>
+</div>
+<div id="menu"><div>
+ <h1>ROTTEN DEPTHS</h1><p>A borrowed body. A finite life. <small>alpha 0.2</small></p>
+ <button id="mResume">Enter / Resume</button><button id="mNew">New Run</button>
+ <p><label>Seed <input id="seedIn" placeholder="random" size="12"></label> <small>current: <span id="seedShow"></span></small></p>
+ <p>Arrows/WASD/QEZC move · Space wait · R rest · X scent · click or tap the map to travel · bump to attack · right-click or long-press a monster to inspect it.</p>
+ <p>Drag the map (mouse or finger) or Shift+Arrows to look around. Pinch or scroll to zoom. The view stays where you put it until you press Center view.</p>
+ <p>Red warning tiles show an attack that resolves on your next action. Step aside or stun its source.</p>
+ <p>Descend 20 floors in four stages of five. Each stage starts in a waste room stocked with a few free items. The last stage is human.</p>
+ <p>Your starting limbs are weak and rot very fast. Stronger grafts decay faster. Stored grafts decay at 25% speed. Legs set your speed: rotten legs or none at all slow you.</p>
+ <fieldset><legend>Settings</legend>
+  <label><input type="checkbox" id="sSound"> Sound</label>
+  <label><input type="checkbox" id="sShake"> Screen shake</label>
+  <label><input type="checkbox" id="sReduce"> Reduced motion</label>
+  <label><input type="checkbox" id="sHints"> Hints</label>
+  <label>Text size <select id="sText"><option value="0.85">Small</option><option value="1">Normal</option><option value="1.2">Large</option><option value="1.4">Largest</option></select></label>
+ </fieldset>
+ <p><button id="mCopy">Copy run summary</button><button id="mDebug">Debug console (`)</button></p>
+</div></div>
+<div id="over"><div><h2 id="ot"></h2><p id="ob"></p><button id="bRise">Rise Again</button><button id="oCopy">Copy run summary</button></div></div>
+<div id="logModal" class="modal"><div><h2>Message log</h2><div id="logFull"></div><button id="logClose">Close</button></div></div>
+<div id="console" class="modal"><div><h2>Debug console</h2><div id="conOut"></div><input id="conIn" placeholder="type help, press Enter" autocomplete="off" spellcheck="false"><button id="conClose">Close</button></div></div>
+<script src="js/util.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/data.js"></script>
+<script src="js/textures.js"></script>
+<script src="js/state.js"></script>
+<script src="js/level.js"></script>
+<script src="js/game.js"></script>
+<script src="js/hints.js"></script>
+<script src="js/render.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/debug.js"></script>
+<script src="js/input.js"></script>
+</body></html>
