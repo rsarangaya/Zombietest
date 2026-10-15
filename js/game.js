@@ -15,7 +15,8 @@ function playerAct(dx,dy){
  if(acted)endTurn(moved,waited)}
 const taintCount=k=>SLOTS.reduce((a,s)=>a+(G.p.eq[s]&&G.p.eq[s].taint===k?1:0),0);
 function endTurn(moved,waited){
- const p=G.p;G.turn++;decayParts();const s=stat();p.hunger+=.35+taintCount('itch')*.12;if(p.candle>0)p.candle--;
+ const p=G.p;G.turn++;decayParts();for(const k of SLOTS){const e=p.eq[k];if(e&&e.cd>0)e.cd--} // graft ability cooldowns
+ const s=stat();p.hunger+=.35+taintCount('itch')*.12;if(p.candle>0)p.candle--;
  if(p.hunger>=100){hurt(1);if(G.turn%3===0)msg('Your hunger gnaws at you.','bad')}
  else if(G.turn%10===0&&p.hp<s.hp&&p.hunger<75)p.hp++;
  if(fx('regen')&&p.hunger<75&&G.turn%5===0&&p.hp<s.hp)p.hp++;
@@ -25,6 +26,7 @@ function endTurn(moved,waited){
  let free=false,slowed=false;
  if(moved){
   if(fx('sprint')&&p.rest>=5){free=true;msg('You sprint!','good')}
+  else if(p.burst>0){p.burst--;free=true}
   else if(s.spd>0&&R()<s.spd)free=true;
   else if(s.spd<0&&R()<-s.spd)slowed=true;
   p.rest=0}
@@ -126,7 +128,7 @@ function stopTravel(){travel=null;clearTimeout(travelTimer);stopRest()}
 // Rest: wait repeatedly until healed, interrupted by an enemy in view, damage, hunger, or 150 turns.
 let resting=false,restTimer=null,restLeft=0;
 function stopRest(){resting=false;clearTimeout(restTimer)}
-const enemyInView=()=>G.mons.some(m=>G.vis[m.y][m.x]);
+const enemyInView=()=>G.mons.some(m=>G.vis[m.y][m.x]&&(m.alert||Math.max(Math.abs(m.x-G.p.x),Math.abs(m.y-G.p.y))<=5));
 function startRest(){
  if(G.over||paused)return;const p=G.p;
  if(enemyInView()){msg('You cannot rest with enemies in view.','warn');return}
@@ -140,19 +142,24 @@ function restStep(){
  restTimer=setTimeout(restStep,70)}
 // Scent: spend a turn to sense the layout nearby and mark where enemies lurk (even in the dark).
 function scentAct(){
- if(G.over||paused)return;const p=G.p;stopTravel();
+ if(G.over||paused)return;stopTravel();
+ scentEffects();sfx('use');endTurn(false,true)}
+function scentEffects(){const p=G.p;
  for(let y=Math.max(0,p.y-8);y<=Math.min(H-1,p.y+8);y++)for(let x=Math.max(0,p.x-8);x<=Math.min(W-1,p.x+8);x++)if((x-p.x)**2+(y-p.y)**2<=64)G.seen[y][x]=true;
  let n=0;for(const m of G.mons)if(Math.max(Math.abs(m.x-p.x),Math.abs(m.y-p.y))<=10){n++;G.floaters.push({x:m.x,y:m.y,t:'!',c:'#e55',l:70})}
- msg(n?`You sniff the air. ${n} presence${n>1?'s':''} nearby.`:'You sniff the air. Nothing stirs nearby.','info');sfx('use');
- endTurn(false,true)}
+ msg(n?`You sniff the air. ${n} presence${n>1?'s':''} nearby.`:'You sniff the air. Nothing stirs nearby.','info')}
 function pathTo(tx,ty){
  const p=G.p,prev=new Map(),key=(x,y)=>y*W+x,q=[[p.x,p.y]];prev.set(key(p.x,p.y),null);
  for(let i=0;i<q.length;i++){const [x,y]=q[i];if(x===tx&&y===ty)break;
   for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const nx=x+dx,ny=y+dy;if((!dx&&!dy)||!walk(nx,ny)||!G.seen[ny][nx]||prev.has(key(nx,ny)))continue;prev.set(key(nx,ny),[x,y]);q.push([nx,ny])}}
  if(!prev.has(key(tx,ty)))return null;const path=[];let c=[tx,ty];while(c&&!(c[0]===p.x&&c[1]===p.y)){path.unshift(c);c=prev.get(key(c[0],c[1]))}return path}
-function startTravel(tx,ty){const path=pathTo(tx,ty);if(!path||!path.length)return;travel=path;stepTravel()}
-function stepTravel(){
+// Travel only stops for real threats: a monster that newly comes into view, or a hunting one within 6 tiles.
+// Sleepers you already know about no longer block clicking to move, and the first step always happens.
+let travelSeen=new Set();
+function startTravel(tx,ty){const path=pathTo(tx,ty);if(!path||!path.length)return;travel=path;travelSeen=new Set(G.mons.filter(m=>G.vis[m.y][m.x]));stepTravel(true)}
+function stepTravel(first){
  if(!travel||!travel.length||G.over||paused){stopTravel();return}
- if(G.mons.some(m=>G.vis[m.y][m.x])){stopTravel();msg('Something stirs nearby.','warn');return}
+ if(first!==true){const p=G.p,threat=G.mons.find(m=>G.vis[m.y][m.x]&&(!travelSeen.has(m)||(m.alert&&Math.max(Math.abs(m.x-p.x),Math.abs(m.y-p.y))<=6)));
+  if(threat){stopTravel();msg(`The ${threat.n} ${travelSeen.has(threat)?'closes in':'comes into view'}.`,'warn');return}}
  const n=travel.shift(),p=G.p;playerAct(n[0]-p.x,n[1]-p.y);
  if(travel)travelTimer=setTimeout(stepTravel,MOVE_MS)}

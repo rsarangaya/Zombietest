@@ -6,7 +6,7 @@ const proxy=()=>new Proxy(function(){},{get:(t,k)=>k==='canvas'?proxy():proxy(),
 const ctx=vm.createContext({console,Math,Set,Map,Array,Object,JSON,Float32Array,
  document:{createElement:()=>({width:0,height:0,getContext:()=>proxy()}),getElementById:()=>proxy()},
  performance:{now:()=>0},window:{},localStorage:{getItem:()=>null,setItem(){}}});
-for(const f of ['util','sprites','data','textures','level'])vm.runInContext(fs.readFileSync(path.join(root,f+'.js'),'utf8'),ctx,{filename:f+'.js'});
+for(const f of ['util','sprites','data','textures','level','abilities'])vm.runInContext(fs.readFileSync(path.join(root,f+'.js'),'utf8'),ctx,{filename:f+'.js'});
 const run=code=>vm.runInContext(code,ctx);
 let fails=0,checks=0;
 const ok=(cond,msg)=>{checks++;if(!cond){fails++;if(fails<=25)console.log('FAIL:',msg)}};
@@ -64,6 +64,7 @@ const issues=run(`(function(){const e=[];
   if(!t.st)e.push('no stats '+t.id)}
  for(const s of Object.values(STARTER))if(!REGION[s.kind].def)e.push('missing starter sprite');
  {const a=mkStarter('legs');if(a.decay<=.55)e.push('starter limbs must rot faster than any graft')}
+ for(const id in ABIL){if(!TPL.some(t=>t.id===id))e.push('ability for unknown part '+id);const a=ABIL[id];if(!a.n||!(a.cd>0)||typeof a.run!=='function')e.push('malformed ability '+id)}
  for(const k in CONS)if(!CONSPR[k])e.push('missing item icon '+k);
  for(const k in MON)if(!S[k])e.push('missing monster sprite '+k);
  const rows=[...Object.values(CONSPR)];for(const r of Object.values(REGION))for(const v of Object.values(r))rows.push(v);

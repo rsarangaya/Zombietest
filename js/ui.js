@@ -2,8 +2,9 @@ function cloneCanvas(c){const n=document.createElement('canvas');n.width=n.heigh
 function describe(it){
  if(it.type==='cons')return `<b>${it.name}</b>${it.count>1?' x'+it.count:''}<br>${CONS[it.id].desc}`;
  const st=it.stats,b=[];if(st.atk)b.push(`+${st.atk} ATK`);if(st.def)b.push(`+${st.def} DEF`);if(st.hp)b.push(`+${st.hp} max HP`);if(st.sight)b.push(`+${st.sight} sight`);if(st.steal)b.push(`life-steal ${st.steal}`);if(st.spd)b.push(`+${Math.round(st.spd*100)}% speed (shrinks as it rots)`);
+ const ab=ABIL[it.id],abl=ab?`<br><span class="info">Active: <b>${ab.n}</b> (cooldown ${ab.cd}). ${ab.desc}${it.cd>0?' Recharging: '+it.cd+'.':''}</span>`:'';
  const tn=!it.known?'<br><span class="warn">Unexamined: may be tainted.</span>':it.taint?`<br><span class="bad">Tainted (${TAINT[it.taint].n}): ${TAINT[it.taint].d}.</span>`:'';
- return `<b>${it.name}</b> (${KINDNAME[it.kind]})<br>${b.join(', ')||'Just meat.'}${it.fxd?'<br>'+it.fxd:''}${tn}<br>Rot ${Math.ceil(it.dur)}/${it.maxdur} · Decay ${(it.decay||.18).toFixed(2)}/turn`}
+ return `<b>${it.name}</b> (${KINDNAME[it.kind]})<br>${b.join(', ')||'Just meat.'}${it.fxd?'<br>'+it.fxd:''}${abl}${tn}<br>Rot ${Math.ceil(it.dur)}/${it.maxdur} · Decay ${(it.decay||.18).toFixed(2)}/turn`}
 function ui(){
  const p=G.p,s=stat(),set=(id,v,max,txt)=>{const e=document.getElementById(id);e.firstChild.style.width=Math.max(0,Math.min(100,v/max*100))+'%';e.lastChild.textContent=txt};
  set('hp',p.hp,s.hp,`HP ${Math.max(0,p.hp)}/${s.hp}`);set('hu',p.hunger,100,`Hunger ${Math.min(100,Math.floor(p.hunger))}%`);set('xp',p.xp,p.lvl*10,`Lv ${p.lvl}  ATK+${s.atk} DEF+${s.def} SPD${s.spd>=0?'+':''}${Math.round(s.spd*100)}%`);
@@ -11,7 +12,7 @@ function ui(){
  const sl=document.getElementById('slots');sl.innerHTML='';
  for(const k of SLOTS){const e=p.eq[k],d=document.createElement('div');d.className='slot'+(selItem&&selItem.eq===k?' sel':'');
   d.appendChild(cloneCanvas(e?itIcon(e):ghostIcon(k)));if(!e)d.firstChild.style.opacity=.35;
-  d.insertAdjacentHTML('beforeend',`<small>${SLOTNAME[k]}</small><span class="nm">${e?(e.known&&e.taint?'☣ ':'')+e.name:'— stump —'}</span>`);
+  d.insertAdjacentHTML('beforeend',`<small>${SLOTNAME[k]}</small><span class="nm">${e?(e.known&&e.taint?'☣ ':'')+(ABIL[e.id]&&!e.cd?'⚡ ':'')+e.name:'— stump —'}</span>`);
   if(e)d.insertAdjacentHTML('beforeend',`<div class="dur"><i style="width:${e.dur/e.maxdur*100}%"></i></div>`);
   d.onclick=()=>{selItem=e?{eq:k,it:e}:null;ui()};sl.appendChild(d)}
  const iv=document.getElementById('inv');iv.innerHTML='';
@@ -41,7 +42,9 @@ function detail(){const el=document.getElementById('detail');
  if(!selItem||!selItem.it){el.innerHTML='Tap an item to inspect it. Tap a distant monster (or right-click / long-press) to inspect it.';return}
  const it=selItem.it;let b='';
  if(selItem.ground)b=`<button onclick="pickUp()">Pick up</button>`;
- else if(selItem.eq)b=`<button onclick="detach('${selItem.eq}')">Detach</button><button onclick="devourEq('${selItem.eq}')">Devour</button>`;
+ else if(selItem.eq){const ab=ABIL[it.id];
+  b=`<button onclick="detach('${selItem.eq}')">Detach</button><button onclick="devourEq('${selItem.eq}')">Devour</button>`
+   +(ab?`<button onclick="useAbility('${selItem.eq}')"${it.cd>0?' disabled':''}>${ab.n}${it.cd>0?' ('+it.cd+')':''}</button>`:'')}
  else if(it.type==='cons'){if(it.id!=='rites')b+=`<button onclick="useCons()">${CONS[it.id].throw?'Throw':'Use'}</button>`;b+=`<button onclick="dropIt()">Drop</button>`}
  else b=`<button onclick="equip()">Attach</button><button onclick="devour()">Devour</button><button onclick="dropIt()">Drop</button>`;
  el.innerHTML=describe(it)+'<br>'+b}
@@ -49,6 +52,7 @@ function equip(){if(paused||G.over)return;const p=G.p,it=selItem.it;if(it.dur<=0
  if(it.kind==='arm')slot=!p.eq.armL?'armL':!p.eq.armR?'armR':(p.eq.armL.dur<=p.eq.armR.dur?'armL':'armR');
  p.inv.splice(selItem.idx,1);const old=p.eq[slot];p.eq[slot]=it;it.slot=slot;
  if(old)p.inv.push(old);msg(`You stitch on ${it.name}.`,'info');sfx('equip');
+ if(ABIL[it.id])hintOnce('ability');
  if(!it.known){it.known=true;if(it.taint){msg(`It writhes! The graft is TAINTED (${TAINT[it.taint].n}): ${TAINT[it.taint].d}.`,'bad');sfx('taint')}}
  selItem=null;afterManage()}
 function detach(k){const p=G.p,e=p.eq[k];if(!e)return;if(p.inv.length>=MAXINV){msg('Backpack full.','warn');return}p.eq[k]=null;p.inv.push(e);msg(`You tear off your ${e.name}.`);selItem=null;afterManage()}

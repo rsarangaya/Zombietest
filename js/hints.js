@@ -7,6 +7,7 @@ const HINTS={
  warning:'A red tile shows where a monster will strike next turn. Step off it, or stun the attacker!',
  hunger:'Above 75% hunger you stop healing. Kill things, or eat Scrap of Flesh and Tainted Meat.',
  starter:'Your stitched-on limbs are weak and rot fast (see the Rot bars). Grab the grafts lying in this waste room!',
+ ability:'This graft has an active ability! Tap the attached part on your body and press its ability button.',
  stairs:'Stairs found. "Travel down" walks you there. Deeper floors are deadlier.',
  slow:'Stumps and rotten legs make you slow: enemies get extra steps. Attach healthy legs!',
  stump:'You have no legs. Find leg grafts (Maggot Crawlers, Crow Legs...) or the dead will outpace you.',
