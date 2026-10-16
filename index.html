@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Romeo's Pixel Dungeon Inspired Fork of a Dungeon Crawler Name TBD about Zombies</title>
+<title>Romeo's Pixel Dungeon Inspired Zombie Rogue Like Game Name TBD but Soon Maybe ALso ITs HorroR and Harder To Beat Ideally</title>
 <link rel="stylesheet" href="css/style.css">
 </head><body>
 <div id="app">
@@ -51,27 +51,54 @@
 </div></div>
 
 <div id="menu"><div>
- <h1>ROTTEN DEPTHS</h1><p>A borrowed body. A finite life. <small>alpha 0.3</small></p>
- <button id="mResume">Enter / Resume</button><button id="mNew">New Run</button>
- <p><label>Seed <input id="seedIn" placeholder="random" size="12"></label> <small>current: <span id="seedShow"></span></small></p>
- <p>Arrows/WASD/QEZC move · Space wait · R rest · X scent · I pack · G pick up · L log · &gt; / &lt; stairs · Shift+1-9 quick buttons.</p>
- <p>Tap the map to travel, bump to attack, right-click or long-press a monster to inspect it. Drag to look around, pinch or scroll to zoom.</p>
- <p>Tap an attached graft in your pack to Detach, Devour, or use its active ability (also shown on the action bar when ready).</p>
- <p>Red warning tiles show an attack that resolves on your next action. Step aside or stun its source.</p>
- <p>Descend 20 floors in four stages of five. Each stage starts in a waste room stocked with a few free items. The last stage is human.</p>
- <p>Your starting limbs are weak and rot very fast. Stronger grafts decay faster. Legs set your speed.</p>
- <fieldset><legend>Settings</legend>
-  <label><input type="checkbox" id="sSound"> Sound</label>
-  <label><input type="checkbox" id="sShake"> Screen shake</label>
-  <label><input type="checkbox" id="sReduce"> Reduced motion</label>
-  <label><input type="checkbox" id="sHints"> Hints</label>
-  <label><input type="checkbox" id="sHaptic"> Vibration</label>
-  <label><input type="checkbox" id="sMap"> Minimap</label>
-  <label>Interface size <select id="sText"><option value="0.85">Small</option><option value="1">Normal</option><option value="1.2">Large</option><option value="1.4">Largest</option></select></label>
- </fieldset>
- <p><button id="mCopy">Copy run summary</button><button id="mDebug">Debug console (`)</button></p>
+ <h1 id="gameTitle">Romeo's Pixel Dungeon Inspired Zombie Rogue Like Game Name TBD but Soon Maybe ALso ITs HorroR and Harder To Beat Ideally</h1><p>A borrowed body. A finite life.<br><small id="buildStamp"></small></p>
+ <p id="marrowShow" class="info"></p>
+
+ <!-- title screen -->
+ <div id="menuMain">
+  <div class="mainBtns">
+   <button id="mClose" style="display:none">Resume</button>
+   <button id="mContinue" style="display:none">Continue</button>
+   <button id="mNewGame">New Game</button>
+  </div>
+  <p id="menuNote" class="warn"></p>
+  <p><label>Starting perk <select id="perkSel"></select></label> &nbsp; <label>Seed <input id="seedIn" placeholder="random" size="10"></label></p>
+  <div class="mainBtns"><button id="mCodex">Codex &amp; Perks</button><button id="mManual">Field Manual</button></div>
+  <details><summary>Settings &amp; controls</summary>
+   <p>Arrows/WASD/QEZC move · Space wait · R rest · X scent · I pack · G pick up · L log · &gt; / &lt; stairs · TAB inspect · Shift+1-9 quick buttons.</p>
+   <p>Tap the map to travel, bump to attack, right-click or long-press a monster to inspect it. Drag to look around, pinch or scroll to zoom, tap the minimap to jump.</p>
+   <p>Tap an attached graft in your pack to Detach, Devour, or use its active ability. Red warning tiles show where a blow lands next turn.</p>
+   <p>Descend 20 floors in four stages of five. Runs autosave as you play, so you can leave and come back, but there is no manual save or load: a bad move stays bad.</p>
+   <fieldset><legend>Settings</legend>
+    <label><input type="checkbox" id="sSound"> Sound</label>
+    <label><input type="checkbox" id="sShake"> Screen shake</label>
+    <label><input type="checkbox" id="sReduce"> Reduced motion</label>
+    <label><input type="checkbox" id="sHints"> Hints</label>
+    <label><input type="checkbox" id="sHaptic"> Vibration</label>
+    <label><input type="checkbox" id="sMap"> Minimap</label>
+    <label><input type="checkbox" id="sLowFx"> Low-detail lighting (faster on old phones)</label>
+    <label>Brightness <select id="sBright"><option value="0">Dim</option><option value="1">Normal</option><option value="2">Bright</option></select></label>
+    <label>Interface size <select id="sText"><option value="0.85">Small</option><option value="1">Normal</option><option value="1.2">Large</option><option value="1.4">Largest</option></select></label>
+   </fieldset>
+   <p><button id="mCopy">Copy run summary</button><button id="mDebug">Debug console ()</button> <small>seed now: <span id="seedShow"></span></small></p>
+  </details>
+  <div class="mainBtns"><button id="mExit">Exit</button></div>
+ </div>
+
+ <!-- saved runs (only reached through Continue) -->
+ <div id="menuRuns" style="display:none">
+  <h3>CONTINUE A RUN</h3><div id="runSlots"></div>
+  <p><small>Runs autosave as you play. There is no manual save or load: a bad move stays bad.</small></p>
+  <button id="mRunsBack">Back</button>
+ </div>
 </div></div>
-<div id="over"><div><h2 id="ot"></h2><p id="ob"></p><button id="bRise">Rise Again</button><button id="oCopy">Copy run summary</button></div></div>
+<div id="exitScreen"><div><h2>Thanks for playing</h2><p>Your runs are saved. You can close this tab.</p><button id="exitBack">Back to the title</button></div></div>
+<div id="codex" class="modal"><div><h2>Codex</h2><div id="codexTabs"><button data-tab="mon">Bestiary</button><button data-tab="part">Grafts</button><button data-tab="perk">Perks</button><button data-tab="rec">Records</button></div><div id="codexBody"></div><button id="codexClose">Close</button></div></div>
+<div id="manual" class="modal"><div><h2>Field manual</h2><div id="manualBody"></div><button id="manualClose">Close</button></div></div>
+<div id="stageChoice" class="modal"><div><h2 id="stageTitle"></h2><p>Choose what waits in the next stage. It applies to all five floors.</p><div id="stageBody"></div></div></div>
+<div id="tip"></div>
+<div id="bargain" class="modal"><div><h2>A bargain with the dead</h2><p>Give up <b>half your max HP</b> for this whole run.</p><p>In return, one <b>random endgame graft</b> is stitched onto you before you start, and it <b>rots 75% slower</b> than anything else.</p><p><small>A harder, riskier way to play. You will not know which graft it is until you take the deal.</small></p><button id="bgYes" class="danger">Take the bargain</button><button id="bgNo">No bargain</button><button id="bgCancel">Back</button></div></div>
+<div id="over"><div><h2 id="ot"></h2><p id="ob"></p><button id="bRise">Rise Again</button><button id="bToMenu">Main menu</button><button id="oCopy">Copy run summary</button></div></div>
 <div id="logModal" class="modal"><div><h2>Message log</h2><div id="logFull"></div><button id="logClose">Close</button></div></div>
 <div id="console" class="modal"><div><h2>Debug console</h2><div id="conOut"></div><input id="conIn" placeholder="type help, press Enter" autocomplete="off" spellcheck="false"><button id="conClose">Close</button></div></div>
 <script src="js/util.js"></script>
@@ -85,6 +112,8 @@
 <script src="js/game.js"></script>
 <script src="js/abilities.js"></script>
 <script src="js/hints.js"></script>
+<script src="js/meta.js"></script>
+<script src="js/runs.js"></script>
 <script src="js/render.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/debug.js"></script>

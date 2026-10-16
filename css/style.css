@@ -45,7 +45,7 @@ button:disabled{opacity:.45;cursor:default}
 .tbtn.hot{border-color:#c93}
 
 /* ---- backpack window ---- */
-.modal{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
+.modal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
 .modal>div{width:100%;max-width:560px;max-height:100%;display:flex;flex-direction:column;background:#0d0a08;border:1px solid #3a2f28;padding:10px}
 .modal h2{margin:0 0 6px;color:#a33;font-size:14px;letter-spacing:3px}
 .win{max-width:620px!important;height:min(100%,740px);padding:8px!important}
@@ -79,5 +79,18 @@ button:disabled{opacity:.45;cursor:default}
 #logFull small{color:#5a4a3a}
 #conOut{white-space:pre-wrap}
 #conIn{background:#120e0b;color:#8d6;border:1px solid #3a2f28;font:inherit;padding:6px;margin-top:6px}
+/* title screen */
+.mainBtns{display:flex;flex-direction:column;gap:6px;max-width:260px;margin:8px auto}.mainBtns button{margin:0;padding:10px}#menu details{margin:10px 0;text-align:left}#menu summary{cursor:pointer;color:#a89a80;text-align:center}
+#exitScreen{position:fixed;inset:0;z-index:70;background:#050403;display:none;align-items:center;justify-content:center;text-align:center}#exitScreen h2{color:#a33;letter-spacing:3px}
+/* run slots */
+#gameTitle{font-size:14px;letter-spacing:1px;line-height:1.35}
+.slot-row{display:flex;gap:8px;align-items:center;justify-content:space-between;text-align:left;background:#120e0b;border:1px solid #3a2f28;padding:8px;margin:5px 0}.slot-row.on{border-color:#d8b040}.slot-btns{display:flex;flex-direction:column;flex:none}.slot-row button{margin:2px 0}button.danger{border-color:#a33;color:#e88}
+/* codex, manual, stage choice, tooltip */
+#codexTabs{display:flex;gap:4px;margin-bottom:6px}#codexTabs button{flex:1;margin:0}#codexTabs button.on{border-color:#d8b040;color:#fff}
+#codexBody,#manualBody{flex:1;min-height:160px;max-height:62vh;overflow:auto;font-size:12px;-webkit-user-select:text;user-select:text}
+.cx{display:flex;gap:8px;align-items:center;background:#120e0b;border:1px solid #2a211b;padding:6px;margin:4px 0}.cx.locked{opacity:.55}.cx img,.cx .unk{width:40px;height:40px;flex:none;image-rendering:pixelated}.cx .unk{display:flex;align-items:center;justify-content:center;font-size:22px;color:#5a4a3a;background:#0a0807}.cx button{margin-left:auto;flex:none}
+#manualBody h3{margin:10px 0 3px}#manualBody p{margin:3px 0}
+#stageChoice>div{max-width:480px}#stageBody .mod{display:block;width:100%;text-align:left;margin:6px 0;padding:10px}
+#tip{position:fixed;z-index:25;display:none;pointer-events:none;background:rgba(10,6,4,.94);border:1px solid #6a3a30;padding:4px 7px;font-size:12px;max-width:260px}
 @media(max-width:430px){#toolbar{gap:4px}.tbtn{width:46px;height:48px}.tbtn b{font-size:18px}.tbtn canvas{width:26px;height:26px}.tbtn small{font-size:8px;max-width:44px}}
 @media(max-height:520px){#hint{display:none}}

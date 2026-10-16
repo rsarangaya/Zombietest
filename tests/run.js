@@ -6,7 +6,7 @@ const proxy=()=>new Proxy(function(){},{get:(t,k)=>k==='canvas'?proxy():proxy(),
 const ctx=vm.createContext({console,Math,Set,Map,Array,Object,JSON,Float32Array,
  document:{createElement:()=>({width:0,height:0,getContext:()=>proxy()}),getElementById:()=>proxy()},
  performance:{now:()=>0},window:{},localStorage:{getItem:()=>null,setItem(){}}});
-for(const f of ['util','sprites','data','textures','level','abilities'])vm.runInContext(fs.readFileSync(path.join(root,f+'.js'),'utf8'),ctx,{filename:f+'.js'});
+for(const f of ['util','sprites','data','textures','level','game','abilities'])vm.runInContext(fs.readFileSync(path.join(root,f+'.js'),'utf8'),ctx,{filename:f+'.js'});
 const run=code=>vm.runInContext(code,ctx);
 let fails=0,checks=0;
 const ok=(cond,msg)=>{checks++;if(!cond){fails++;if(fails<=25)console.log('FAIL:',msg)}};
@@ -51,9 +51,9 @@ for(let d=1;d<=MAXD;d++)for(let s=1;s<=40;s++){const r=lvl(s*7919,d);
  ok(r.mons>0,`depth ${d}: no monsters`);ok(r.items>=3,`depth ${d}: too few items`);
  const mini={5:'warden',10:'matron',15:'abomination'}[d];if(mini)ok(r.ks.includes(mini),`depth ${d} seed ${s*7919}: ${mini} missing`);
  if((d-1)%STAGE_LEN===0)ok(r.waste>=2,`depth ${d} seed ${s*7919}: waste room has ${r.waste} items`);
- if(d>=16)ok(r.ks.filter(k=>['guard','rifleman','scientist'].includes(k)).length>0,`depth ${d} seed ${s*7919}: no humans in the human stage`);
- if(d>=16)ok(r.ks.every(k=>['guard','rifleman','scientist','boss'].includes(k)),`depth ${d} seed ${s*7919}: non-human monster in the human stage`);
- if(d<16)ok(!r.ks.some(k=>['guard','rifleman','scientist'].includes(k)),`depth ${d}: humans appeared early`);
+ if(d>=16)ok(r.ks.filter(k=>['guard','rifleman','scientist','medic'].includes(k)).length>0,`depth ${d} seed ${s*7919}: no humans in the human stage`);
+ if(d>=16)ok(r.ks.every(k=>['guard','rifleman','scientist','medic','boss','stalker'].includes(k)),`depth ${d} seed ${s*7919}: non-human monster in the human stage`);
+ if(d<16)ok(!r.ks.some(k=>['guard','rifleman','scientist','medic'].includes(k)),`depth ${d}: humans appeared early`);
  ok((d<MAXD)===(r.sDx>=0),`depth ${d}: wrong down-stairs presence`);
  ok(d!==MAXD||r.ks.includes('boss'),`depth ${d} seed ${s*7919}: boss missing`)}
 console.log(`levels: depths 1-${MAXD} x 40 seeds checked`);
@@ -65,8 +65,9 @@ const issues=run(`(function(){const e=[];
  for(const s of Object.values(STARTER))if(!REGION[s.kind].def)e.push('missing starter sprite');
  {const a=mkStarter('legs');if(a.decay<=.55)e.push('starter limbs must rot faster than any graft')}
  for(const id in ABIL){if(!TPL.some(t=>t.id===id))e.push('ability for unknown part '+id);const a=ABIL[id];if(!a.n||!(a.cd>0)||typeof a.run!=='function')e.push('malformed ability '+id)}
+ for(const kind of ['head','torso','arm','legs'])if(!TPL.some(t=>t.t===5&&t.kind===kind))e.push('the bargain needs a tier-5 '+kind+' graft')
  for(const k in CONS)if(!CONSPR[k])e.push('missing item icon '+k);
- for(const k in MON){if(!S[k])e.push('missing monster sprite '+k);const ps=TPL.filter(t=>t.src===k);if(ps.length<3)e.push('monster '+k+' has only '+ps.length+' own parts');if(!ps.some(t=>t.kind==='legs')&&!['boss'].includes(k))e.push('monster '+k+' drops no legs')}
+ for(const k in MON){if(!S[k])e.push('missing monster sprite '+k);const ps=TPL.filter(t=>t.src===k);if(ps.length<3&&!MON[k].noParts)e.push('monster '+k+' has only '+ps.length+' own parts');if(!ps.some(t=>t.kind==='legs')&&!['boss'].includes(k)&&!MON[k].noParts)e.push('monster '+k+' drops no legs')}
  for(const k in PART_CHANCE)if(!MON[k])e.push('PART_CHANCE for unknown monster '+k);
  for(const k in MON)if(!MON[k].mini&&k!=='boss'&&!(PART_CHANCE[k]>0))e.push('no part chance for '+k);
  const rows=[...Object.values(CONSPR)];for(const r of Object.values(REGION))for(const v of Object.values(r))rows.push(v);
@@ -77,5 +78,31 @@ const issues=run(`(function(){const e=[];
 for(const i of issues)ok(false,i);
 console.log('data: templates, icons, monsters, durability checked');
 
+// ---- 5. click-to-travel must never route through a staircase (taps beside the stairs used to take them)
+const stairsRoute=run(`(function(){
+ const mk=()=>Array.from({length:H},()=>new Array(W).fill(1));
+ G={map:mk(),seen:Array.from({length:H},()=>new Array(W).fill(true)),p:{x:10,y:10},sU:{x:11,y:9},sD:{x:-1,y:-1},mons:[]};
+ const around=pathTo(12,10);                 // two tiles right; the shortest BFS route used to cut through the stairs at (11,9)
+ const onto=pathTo(11,9);                    // the stairs themselves are still a valid destination
+ G.sU={x:11,y:11};const south=pathTo(12,10); // and the same when the stairs sit on the other diagonal
+ return {around:around&&around.map(c=>c.join(',')),onto:onto&&onto.map(c=>c.join(',')),south:south&&south.map(c=>c.join(','))}})()`);
+ok(stairsRoute.around&&!stairsRoute.around.includes('11,9'),'travel path cut through the up stairs: '+JSON.stringify(stairsRoute.around));
+ok(stairsRoute.onto&&stairsRoute.onto[stairsRoute.onto.length-1]==='11,9','cannot travel onto the stairs when asked');
+ok(stairsRoute.south&&!stairsRoute.south.includes('11,11'),'travel path cut through stairs on the south diagonal');
+console.log('travel: stairs are only entered on purpose');
+// ---- 6. graft variety: slots stay level, and the hidden tiers are sane
+const variety=run(`(function(){
+ seedRng(31337);G={};const kinds={head:0,torso:0,arm:0,legs:0};let prev='',streak=0,maxStreak=0;const N=6000;
+ for(let i=0;i<N;i++){const d=1+Math.floor(R()*20),k=mkPart(d).kind;kinds[k]++;streak=k===prev?streak+1:1;prev=k;if(streak>maxStreak)maxStreak=streak}
+ const byDepth={};for(const d of [1,4,8,12,16,20]){G={};const c={head:0,torso:0,arm:0,legs:0};for(let i=0;i<1200;i++)c[mkPart(d).kind]++;byDepth[d]=c}
+ const hid={1:0,2:0,3:0,4:0,5:0};for(const t of TPL)hid[t.hid]++;
+ const kindsWithSpread=['head','torso','arm','legs'].map(k=>new Set(TPL.filter(t=>t.kind===k).map(t=>t.hid)).size);
+ return {kinds,maxStreak,byDepth,hid,kindsWithSpread,N}})()`);
+for(const k of ['head','torso','arm','legs'])ok(Math.abs(variety.kinds[k]/variety.N-.25)<.02,`graft slot ${k} is ${(variety.kinds[k]/variety.N*100).toFixed(1)}% of drops (want ~25%)`);
+ok(variety.maxStreak<=2,`same graft slot ${variety.maxStreak} times in a row`);
+for(const d in variety.byDepth)for(const k in variety.byDepth[d])ok(Math.abs(variety.byDepth[d][k]/1200-.25)<.04,`depth ${d}: ${k} is ${(variety.byDepth[d][k]/12).toFixed(1)}% of drops`);
+for(const h in variety.hid)ok(variety.hid[h]>0,`hidden tier ${h} has no grafts`);
+variety.kindsWithSpread.forEach((n,i)=>ok(n>=3,`slot ${['head','torso','arm','legs'][i]} only spans ${n} hidden tiers`));
+console.log('variety: slots even across '+variety.N+' drops, hidden tiers '+JSON.stringify(variety.hid));
 console.log(fails?`\n${fails} of ${checks} checks FAILED`:`\nall ${checks} checks passed`);
 process.exit(fails?1:0);

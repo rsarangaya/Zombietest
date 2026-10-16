@@ -32,6 +32,12 @@ S.rifleman=build(HUMAN,{a:'#5a6a3a',h:'#4a4a2a'});
 S.scientist=build(HUMAN,{a:'#d8d8d0',h:'#6a5a4a'});
 S.matron=build(SPR.bloat,{a:'#a05a7a',e:'#301000',n:'#a05a7a'});
 S.abomination=build(SPR.golem,{a:'#5a3a7a',e:'#ff60ff'});
+S.mender=build(SPR.cultist,{a:'#7a9a7a',e:'#e8ffd0',d:'#4a6a4a'});
+S.wailer=build(SPR.cultist,{a:'#cfd8e0',e:'#ff5a5a',d:'#8a98a8'});
+S.broodmother=build(SPR.bloat,{a:'#8a6a4a',e:'#ffd070',n:'#8a6a4a'});
+S.leech=build(SPR.cultist,{a:'#6a2a6a',e:'#ff90ff',d:'#4a1a4a'});
+S.medic=build(HUMAN,{a:'#ececec',h:'#5a3a3a'});
+S.stalker=build(SPR.golem,{a:'#262634',e:'#ff2020'});
 // ---------- body-region sprites ----------
 const SKIN='#8aa27a';
 const HEAD={ghoul:["..aaaa..",".aaaaaa.",".aeaaea.",".aaaaaa.",".awkkwa.",".awkkwa.","..aaaa.."],

@@ -3,12 +3,14 @@ function describe(it){
  if(it.type==='cons')return `<b>${it.name}</b>${it.count>1?' x'+it.count:''}<br>${CONS[it.id].desc}`;
  const st=it.stats,b=[];if(st.atk)b.push(`+${st.atk} ATK`);if(st.def)b.push(`+${st.def} DEF`);if(st.hp)b.push(`+${st.hp} max HP`);if(st.sight)b.push(`+${st.sight} sight`);if(st.steal)b.push(`life-steal ${st.steal}`);if(st.spd)b.push(`+${Math.round(st.spd*100)}% speed (shrinks as it rots)`);
  const ab=ABIL[it.id],abl=ab?`<br><span class="info">Active: <b>${ab.n}</b> (cooldown ${ab.cd}). ${ab.desc}${it.cd>0?' Recharging: '+it.cd+'.':''}</span>`:'';
+ const bg=it.bargain?'<br><span class="good">Bargain graft: it rots 75% slower than normal.</span>':'';
  const tn=!it.known?'<br><span class="warn">Unexamined: may be tainted.</span>':it.taint?`<br><span class="bad">Tainted (${TAINT[it.taint].n}): ${TAINT[it.taint].d}.</span>`:'';
- return `<b>${it.name}</b> (${KINDNAME[it.kind]})<br>${b.join(', ')||'Just meat.'}${it.fxd?'<br>'+it.fxd:''}${abl}${tn}<br>Rot ${Math.ceil(it.dur)}/${it.maxdur} · Decay ${(it.decay||.18).toFixed(2)}/turn`}
+ return `<b>${it.name}</b> (${KINDNAME[it.kind]})<br>${b.join(', ')||'Just meat.'}${it.fxd?'<br>'+it.fxd:''}${abl}${bg}${tn}<br>Rot ${Math.ceil(it.dur)}/${it.maxdur} · Decay ${(it.decay||.18).toFixed(2)}/turn`}
 function ui(){
  const p=G.p,s=stat(),set=(id,v,max,txt)=>{const e=document.getElementById(id);e.firstChild.style.width=Math.max(0,Math.min(100,v/max*100))+'%';e.lastChild.textContent=txt};
  set('hp',p.hp,s.hp,`HP ${Math.max(0,p.hp)}/${s.hp}`);set('hu',p.hunger,100,`Hunger ${Math.min(100,Math.floor(p.hunger))}%`);set('xp',p.xp,p.lvl*10,`Lv ${p.lvl}  ATK+${s.atk} DEF+${s.def} SPD${s.spd>=0?'+':''}${Math.round(s.spd*100)}%`);
- document.getElementById('where').textContent=`Stage ${G.regIdx+1} · ${G.reg.n} · Depth ${G.depth}/${MAX_DEPTH}`;
+ const modK=(G.mods&&G.mods[G.regIdx])||'standard',ft=(G.ft&&G.ft[G.depth])||0,reek=ft>=REEK_WARN?(G.reek&&G.reek[G.depth]?' · <b style=\"color:#e55\">THE REEK HUNTS</b>':' · <b style=\"color:#e90\">a smell grows...</b>'):'';
+ document.getElementById('where').innerHTML=`Stage ${G.regIdx+1} · ${G.reg.n} · Depth ${G.depth}/${MAX_DEPTH}${modK!=='standard'?' · '+MODS[modK].n:''}${G.p.bargain?' · ☠ Bargain':''}${reek}`;
  const sl=document.getElementById('slots');sl.innerHTML='';
  for(const k of SLOTS){const e=p.eq[k],d=document.createElement('div');d.className='slot'+(selItem&&selItem.eq===k?' sel':'');
   d.appendChild(cloneCanvas(e?itIcon(e):ghostIcon(k)));if(!e)d.firstChild.style.opacity=.35;
@@ -27,8 +29,8 @@ function ui(){
  here.forEach(e=>{const d=document.createElement('div');d.className='inv'+(selItem&&selItem.ground===e?' sel':'');d.appendChild(cloneCanvas(itIcon(e.it)));d.title=e.it.name;
   if(e.it.count>1)d.insertAdjacentHTML('beforeend',`<b>${e.it.count}</b>`);
   d.onclick=()=>{selItem={ground:e,it:e.it};ui()};gv.appendChild(d)});
- document.getElementById('packH').textContent=`BACKPACK (${p.inv.length}/${MAXINV})`;
- detail();renderQuick();renderInspect()}
+ document.getElementById('packH').textContent=`BACKPACK (${p.inv.length}/${maxInv()})`;
+ detail();renderQuick();renderInspect();codexScan();syncMenuPerk();saveRunSoon()}
 // ---------- HUD: backpack window, action bar, quick buttons, inspect card ----------
 const packEl=()=>document.getElementById('pack');
 const packIsOpen=()=>packEl().style.display==='flex';
@@ -68,8 +70,9 @@ function renderInspect(){
  else el.style.display='none'}function describeMon(m){
  const bonus=Math.floor(G.depth/4),tr=[];
  if(m.rng)tr.push(`ranged hex (range ${m.rng})`);if(m.burst)tr.push('bursts in acid when killed');if(m.erratic)tr.push('flits erratically');
+ if(m.role)tr.push({heal:'heals the monsters near it',wail:'shrieks to wake the floor',brood:'births maggots',leech:'drains your max HP'}[m.role]);if(m.ally)tr.push('YOUR MINION');if(m.grp>=0&&!m.ally)tr.push('runs in a pack');
  if(m.spd>1)tr.push('fast');else if(m.spd<1)tr.push('slow');if(m.mini||m.k==='boss')tr.push(m.k==='boss'?'final boss':'mini-boss');
- const st=[m.bleed>0&&`bleeding ${m.bleed}`,m.poison>0&&`poisoned ${m.poison}`,m.burn>0&&`burning ${m.burn}`,m.slow>0&&`slowed ${m.slow}`,m.stun>0&&'stunned'].filter(Boolean);
+ const st=[m.bleed>0&&`bleeding ${m.bleed}`,m.poison>0&&`poisoned ${m.poison}`,m.burn>0&&`burning ${m.burn}`,m.slow>0&&`slowed ${m.slow}`,m.root>0&&`rooted ${m.root}`,m.stun>0&&'stunned'].filter(Boolean);
  return `<b>${m.n}</b> · HP ${m.hp}/${m.max}<br>Hits for ${m.a[0]+bonus}-${m.a[1]+bonus} (before your defense)<br>${tr.join(', ')||'No special traits.'}${st.length?'<br>Status: '+st.join(', '):''}<br>${m.alert?'Hunting you.':'Asleep or unaware.'}`}
 function pickUp(){const s=selItem;if(!s||!s.ground||paused||G.over)return;const e=s.ground,i=G.items.indexOf(e);if(i<0)return;
  if(!addInv(e.it)){msg('Backpack full.','warn');return}
@@ -80,9 +83,9 @@ function detail(){const el=document.getElementById('detail');
  if(selItem.ground)b=`<button onclick="pickUp()">Pick up</button>`;
  else if(selItem.eq){const ab=ABIL[it.id];
   b=`<button onclick="detach('${selItem.eq}')">Detach</button><button onclick="devourEq('${selItem.eq}')">Devour</button>`
-   +(ab?`<button onclick="useAbility('${selItem.eq}')"${it.cd>0?' disabled':''}>${ab.n}${it.cd>0?' ('+it.cd+')':''}</button>`:'')}
+   +(ab?`<button onclick="useAbility('${selItem.eq}')"${it.cd>0?' disabled':''}>${ab.n}${it.cd>0?' ('+it.cd+')':''}</button>`:'')+fuseBtn(it)}
  else if(it.type==='cons'){if(it.id!=='rites')b+=`<button onclick="useCons()">${CONS[it.id].throw?'Throw':'Use'}</button>`;b+=`<button onclick="dropIt()">Drop</button>`}
- else b=`<button onclick="equip()">Attach</button><button onclick="devour()">Devour</button><button onclick="dropIt()">Drop</button>`;
+ else b=`<button onclick="equip()">Attach</button><button onclick="devour()">Devour</button><button onclick="dropIt()">Drop</button>`+fuseBtn(it);
  el.innerHTML=describe(it)+(selItem.eq?'':compareLine(it))+'<br>'+b}
 function equip(){if(paused||G.over)return;const p=G.p,it=selItem.it;if(it.dur<=0){msg('This graft has decomposed.','warn');return}let slot=it.kind;
  if(it.kind==='arm')slot=!p.eq.armL?'armL':!p.eq.armR?'armR':(p.eq.armL.dur<=p.eq.armR.dur?'armL':'armR');
@@ -91,7 +94,7 @@ function equip(){if(paused||G.over)return;const p=G.p,it=selItem.it;if(it.dur<=0
  if(ABIL[it.id])hintOnce('ability');
  if(!it.known){it.known=true;if(it.taint){msg(`It writhes! The graft is TAINTED (${TAINT[it.taint].n}): ${TAINT[it.taint].d}.`,'bad');sfx('taint')}}
  selItem=null;afterManage()}
-function detach(k){const p=G.p,e=p.eq[k];if(!e)return;if(p.inv.length>=MAXINV){msg('Backpack full.','warn');return}p.eq[k]=null;p.inv.push(e);msg(`You tear off your ${e.name}.`);selItem=null;afterManage()}
+function detach(k){const p=G.p,e=p.eq[k];if(!e)return;if(p.inv.length>=maxInv()){msg('Backpack full.','warn');return}p.eq[k]=null;p.inv.push(e);msg(`You tear off your ${e.name}.`);selItem=null;afterManage()}
 function devour(){const p=G.p,it=selItem.it;p.inv.splice(selItem.idx,1);feed(it);selItem=null;afterManage()}
 function devourEq(k){const p=G.p,it=p.eq[k];p.eq[k]=null;feed(it);selItem=null;afterManage()}
 function feed(it){const p=G.p;p.hunger=Math.max(0,p.hunger-18);p.hp=Math.min(stat().hp,p.hp+4);msg(`You gnaw on ${it.name}. Tastes awful. (+4 HP)`,'good');sfx('eat');
@@ -100,7 +103,7 @@ function dropIt(){const p=G.p,it=selItem.it; // dropped items stack on the tile 
  p.inv.splice(selItem.idx,1);G.items.push({x:p.x,y:p.y,it});msg(`You drop ${it.name}.`);selItem=null;afterManage()}
 function afterManage(){const s=stat();if(G.p.hp>s.hp)G.p.hp=s.hp;if(G.p.hp<=0){die();return}computeFOV();ui()}
 function consume(it){it.count--;if(it.count<=0){const i=G.p.inv.indexOf(it);if(i>=0)G.p.inv.splice(i,1)}}
-function nearestTarget(){const p=G.p;let best=null,bd=99;for(const m of G.mons){if(!G.vis[m.y][m.x])continue;const d=Math.max(Math.abs(m.x-p.x),Math.abs(m.y-p.y));if(d<=5&&d<bd&&los(p.x,p.y,m.x,m.y)){bd=d;best=m}}return best}
+function nearestTarget(){const p=G.p;let best=null,bd=99;for(const m of G.mons){if(m.ally||!G.vis[m.y][m.x])continue;const d=Math.max(Math.abs(m.x-p.x),Math.abs(m.y-p.y));if(d<=5&&d<bd&&los(p.x,p.y,m.x,m.y)){bd=d;best=m}}return best}
 function useCons(){if(paused||G.over)return;stopTravel();
  const it=selItem.it,p=G.p,s=stat(),id=it.id;
  if(CONS[id].throw){const t=nearestTarget();if(!t){msg('No target in range.','warn');return}
@@ -108,8 +111,8 @@ function useCons(){if(paused||G.over)return;stopTravel();
   addFX('lob',{org:p,tgt:t,col:id==='shards'?'#ddd8c0':id==='pyre'?'#f93':id==='grease'?'#6a6a98':'#9ad030',life:20,big:id!=='shards',splash:id==='shards'?4:14});
   if(id==='shards'){const d=rnd(2,4);t.hp-=d;t.alert=true;G.floaters.push({x:t.x,y:t.y,t:'-'+d,c:'#fc6',l:25});blood(t.x,t.y,6);msg(`A bone shard hits the ${t.n} for ${d}.`);if(t.hp<=0)kill(t)}
   else if(id==='pyre'){msg(`The Pyre Flask bursts over the ${t.n}!`,'warn');t.hp-=3;t.burn=4;t.alert=true;G.floaters.push({x:t.x,y:t.y,t:'-3',c:'#f93',l:25});blood(t.x,t.y,10,'#f93',2);if(t.hp<=0)kill(t)}
-  else if(id==='grease'){msg('Grave Tar splashes out and clings!','warn');for(const o of [...G.mons])if(Math.max(Math.abs(o.x-t.x),Math.abs(o.y-t.y))<=1){o.slow=6;o.alert=true;G.floaters.push({x:o.x,y:o.y,t:'slow',c:'#8ab',l:25});blood(o.x,o.y,8,'#5a5a78',1.5)}}
-  else{msg('The Putrid Jar shatters in a green cloud!','warn');for(const o of [...G.mons])if(Math.max(Math.abs(o.x-t.x),Math.abs(o.y-t.y))<=1){o.hp-=4;o.poison=5;o.alert=true;G.floaters.push({x:o.x,y:o.y,t:'-4',c:'#9c3',l:25});blood(o.x,o.y,10,'#9ad030',2);if(o.hp<=0)kill(o)}}
+  else if(id==='grease'){msg('Grave Tar splashes out and clings!','warn');for(const o of [...G.mons])if(!o.ally&&Math.max(Math.abs(o.x-t.x),Math.abs(o.y-t.y))<=1){o.slow=6;o.alert=true;G.floaters.push({x:o.x,y:o.y,t:'slow',c:'#8ab',l:25});blood(o.x,o.y,8,'#5a5a78',1.5)}}
+  else{msg('The Putrid Jar shatters in a green cloud!','warn');for(const o of [...G.mons])if(!o.ally&&Math.max(Math.abs(o.x-t.x),Math.abs(o.y-t.y))<=1){o.hp-=4;o.poison=5;o.alert=true;G.floaters.push({x:o.x,y:o.y,t:'-4',c:'#9c3',l:25});blood(o.x,o.y,10,'#9ad030',2);if(o.hp<=0)kill(o)}}
  }else{
   sfx(id==='flask'||id==='serum'||id==='brine'?'drink':id==='rite'?'rite':'use');
   if(id==='flask'){const h=10+2*G.depth;p.hp=Math.min(s.hp,p.hp+h);msg(`You gulp the flask. +${h} HP.`,'good')}
@@ -121,7 +124,7 @@ function useCons(){if(paused||G.over)return;stopTravel();
    if(w.taint){w.taint='';msg('The taint dissolves in the brine.','good')}}
   else if(id==='candle'){p.candle=60;msg('A pale flame steadies your sight.','info')}
   else if(id==='map'){for(let y=0;y<H;y++)for(let x=0;x<W;x++)G.seen[y][x]=true;msg('The map etches the floor into your memory.','info')}
-  else if(id==='rite'){const rs=G.rooms.slice(1);for(let i=0;i<40;i++){const r=pick(rs),x=rnd(r.x,r.x+r.w-1),y=rnd(r.y,r.y+r.h-1);if(G.map[y][x]===1&&!monAt(x,y)&&!(x===G.sD.x&&y===G.sD.y)&&!(x===G.sU.x&&y===G.sU.y)){p.x=x;p.y=y;p.rx=x;p.ry=y;break}}msg('The rite tears you through the dark.','info')}
+  else if(id==='rite'){const rs=G.rooms.slice(1);for(let i=0;i<40;i++){const r=pick(rs),x=rnd(r.x,r.x+r.w-1),y=rnd(r.y,r.y+r.h-1);if(G.map[y][x]===1&&!monAt(x,y)&&!(x===G.sD.x&&y===G.sD.y)&&!(x===G.sU.x&&y===G.sU.y)){snapPos(p,x,y);break}}msg('The rite tears you through the dark.','info')}
   consume(it)}
  selItem=null;closePack();computeFOV();endTurn(false,false)}
 // Messages float over the map like in Shattered Pixel Dungeon and fade after a few seconds; the 📜 button opens the full history.
@@ -131,3 +134,25 @@ function renderLog(){const now=performance.now(),el=document.getElementById('log
  if(document.getElementById('logModal').style.display==='flex')renderLogFull()}
 setInterval(()=>{if(G&&G.log&&G.log.length&&G.log[0])renderLog()},700);function renderLogFull(){const h=document.getElementById('logFull');h.innerHTML=G.log.map(l=>`<div class="${l.c}"><small>T${l.turn}</small> ${l.t}</div>`).join('')}
 function openLog(){document.getElementById('logModal').style.display='flex';renderLogFull()}
+
+// ---------- fusion: two copies of the same graft become one stronger graft ----------
+const fusePartner=it=>it&&it.type==='part'&&it.fz!==undefined?G.p.inv.find(o=>o!==it&&o.type==='part'&&o.id===it.id):null;
+const fuseBtn=it=>fusePartner(it)&&(it.fz||0)<2?`<button onclick="fuse()" title="Consumes the spare copy: +25% stats, +25% rot capacity, restores rot, cleanses taint">Fuse</button>`:'';
+function fuse(){
+ const p=G.p,it=selItem&&selItem.it,other=fusePartner(it);if(!it||!other||paused||G.over)return;
+ if((it.fz||0)>=2){msg('This graft cannot be fused any further.','warn');return}
+ p.inv.splice(p.inv.indexOf(other),1);
+ it.base=it.base||it.name.replace(/^(Twice-fused|Fused) /,'');it.fz=(it.fz||0)+1;it.name=(it.fz>1?'Twice-fused ':'Fused ')+it.base;
+ for(const k in it.stats){const v=it.stats[k];if(v>0)it.stats[k]=k==='spd'?+(v+.03).toFixed(2):v+Math.max(1,Math.round(v*.25))}
+ it.maxdur=Math.round(it.maxdur*1.25);it.dur=it.maxdur;it.taint='';it.known=true;
+ msg(`The two grafts knit into one: ${it.name}.`,'good');sfx('equip');addFX('heal',{org:p,life:28});
+ selItem=selItem.eq?{eq:selItem.eq,it}:{idx:p.inv.indexOf(it),it};afterManage()}
+
+// ---------- stage variant choice ----------
+function openStageChoice(){
+ const idx=G.depth/STAGE_LEN,pool=['hive','cursed','crypt','standard'].sort(()=>R()-.5).slice(0,3),el=document.getElementById('stageBody');
+ paused=true;closePack();
+ document.getElementById('stageTitle').textContent=`The way splits: ${REG[Math.min(STAGES-1,idx)].n}`;
+ el.innerHTML=pool.map(k=>`<button class="mod" data-k="${k}"><b>${MODS[k].n}</b><br><small>${MODS[k].desc}</small></button>`).join('');
+ for(const b of el.querySelectorAll('button'))b.onclick=()=>{G.mods[idx]=b.dataset.k;document.getElementById('stageChoice').style.display='none';paused=false;sfx('stairs');changeLevel(1,true)};
+ document.getElementById('stageChoice').style.display='flex'}

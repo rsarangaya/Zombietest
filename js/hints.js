@@ -19,7 +19,7 @@ function checkHints(){
  const p=G.p;
  if(p.hp<stat().hp*.3&&G.turn%2===0)sfx('heart');
  if(G.turn===2&&G.depth===1)hintOnce('starter');
- if(G.mons.some(m=>G.vis[m.y][m.x]))hintOnce('monster');
+ if(G.mons.some(m=>!m.ally&&G.vis[m.y][m.x]))hintOnce('monster');
  if(G.items.some(i=>G.vis[i.y][i.x]))hintOnce('item');
  if(p.inv.some(i=>i.type==='part'&&!i.known))hintOnce('part');
  if(p.hunger>=50)hintOnce('hunger');

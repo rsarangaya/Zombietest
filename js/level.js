@@ -45,7 +45,7 @@ function genLevel(d){
  G.vis=Array.from({length:H},()=>new Array(W).fill(false));G.seen=Array.from({length:H},()=>new Array(W).fill(false));
  G.shade=Array.from({length:H},()=>Array.from({length:W},()=>R()));
  G.decor=Array.from({length:H},(_,y)=>Array.from({length:W},(_,x)=>{if(G.map[y][x]!==1)return 0;const r=R();return r<.06?1:r<.1?2:r<.13?3:r<.17?4:r<.2?5:0}));
- G.items=[];G.mons=[];G.torches=[];
+ G.items=[];G.mons=[];G.torches=[];G.barr=[];
  G.sU={x:rs[0].cx,y:rs[0].cy};const last=rs[rs.length-1];G.sD=d<MAX_DEPTH?{x:last.cx,y:last.cy}:{x:-1,y:-1};
  for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++)if(G.map[y][x]===0&&G.map[y+1][x]===1&&R()<.07&&!G.torches.some(t=>Math.abs(t.x-x)<4&&Math.abs(t.y-y)<4))G.torches.push({x,y});
  const free=r=>{for(let i=0;i<30;i++){const x=rnd(r.x,r.x+r.w-1),y=rnd(r.y,r.y+r.h-1);
@@ -53,7 +53,9 @@ function genLevel(d){
  const put=it=>{const f=free(pick(rs.slice(1)));if(f)G.items.push({...f,it});return !!f};
  // first floor of every stage: the arrival room is a "waste room" stocked with a few free, clean goodies
  if((d-1)%STAGE_LEN===0)stockWasteRoom(d,rs[0],free);
- for(let i=0,n=rnd(1,2);i<n;i++)put(mkPart(d));put(mkCons('flask'));put(mkCons('scrap'));put(mkLoot(d,null,0));
+ const mod=MODS[(G.mods&&G.mods[G.regIdx])||'standard']||MODS.standard; // stage variant chosen at the previous stage boundary
+ for(let i=0,n=rnd(1,2)+mod.part;i<n;i++)put(mkPart(d+mod.tier*4));put(mkCons('flask'));put(mkCons('scrap'));put(mkLoot(d,null,0));
+ for(let i=0;i<mod.loot;i++)put(mkLoot(d,null,0));
  if(d%5===4)put(mkCons('serum')); // one permanent +max HP serum per stage, just before its boss floor
  if(d>=10&&!G.rites&&R()<.35&&put(mkCons('rites')))G.rites=true;
  const types=Object.keys(MON).filter(k=>k!=='boss'&&d>=MON[k].d[0]&&d<=MON[k].d[1]);
@@ -61,8 +63,10 @@ function genLevel(d){
  const MINI={5:'warden',10:'matron',15:'abomination'};
  if(MINI[d]){const f=free(last);if(f)spawn(MINI[d],f)}
  if(d===MAX_DEPTH){const f=free(last);if(f)spawn('boss',f);for(const k of ['guard','guard','rifleman','scientist']){const f2=free(pick(rs.slice(1)));if(f2)spawn(k,f2)}}
- for(let i=0,n=rnd(6,9)+Math.floor(d/4);i<n;i++){const f=free(pick(rs.slice(1)));if(f)spawn(pick(types.length?types:['golem']),f)}}
-// Waste room: 2-3 randomized, untainted goodies (usually a graft, plus supplies) near the stage's start.
+ // monsters come in room packs: one wake-up call rouses the whole room (see monstersAct)
+ let left=Math.round((rnd(6,9)+Math.floor(d/4))*mod.mon),guard=0;const pool=types.length?types:['golem'];
+ while(left>0&&guard++<80){const r=pick(rs.slice(1)),k0=pick(pool),size=Math.min(left,rnd(1,3));
+  for(let i=0;i<size;i++){const f=free(r);if(!f)break;spawn(R()<.6?k0:pick(pool),f);left--}}}// Waste room: 2-3 randomized, untainted goodies (usually a graft, plus supplies) near the stage's start.
 function stockWasteRoom(d,r,free){
  for(let y=r.y;y<r.y+r.h;y++)for(let x=r.x;x<r.x+r.w;x++)if(G.map[y][x]===1&&R()<.4)G.decor[y][x]=pick([1,3,3,5]); // scattered gore, bones and rubble
  const clean=p=>{p.taint='';p.known=true;return p};
@@ -70,27 +74,35 @@ function stockWasteRoom(d,r,free){
  if(R()<.6){let g=clean(mkPart(d+1)),tries=0;while(g.kind===items[0].kind&&tries++<8)g=clean(mkPart(d+1));items.push(g)}
  const sup=['flask','flask','scrap','scrap','shards','brine','candle'];
  while(items.length<n)items.push(mkCons(pick(sup)));
- for(const it of items){const f=free(r);if(f)G.items.push({...f,it})}}function spawn(k,pos){const t=MON[k];G.mons.push({...t,k,x:pos.x,y:pos.y,rx:pos.x,ry:pos.y,hp:t.hp+Math.floor(G.depth/3),max:t.hp+Math.floor(G.depth/3),en:0,alert:false,fx:1,bleed:0,poison:0,stun:0})}
-function changeLevel(dir){
- const p=G.p;if(G.depth>0)sfx('stairs');
- if(G.depth>0){const o={};LVLKEYS.forEach(k=>o[k]=G[k]);G.levels[G.depth]=o}
+ for(const it of items){const f=free(r);if(f)G.items.push({...f,it})}}let MID=1; // unique monster ids (summoners track their minions with these)
+function spawn(k,pos,extra){const t=MON[k],hp=t.hp+Math.floor(G.depth/3);
+ const grp=G.rooms?G.rooms.findIndex(r=>pos.x>=r.x&&pos.x<r.x+r.w&&pos.y>=r.y&&pos.y<r.y+r.h):-1;
+ const m={...t,k,id:MID++,grp,x:pos.x,y:pos.y,rx:pos.x,ry:pos.y,q:[],hp,max:hp,en:0,alert:false,fx:1,bleed:0,poison:0,stun:0,...(extra||{})};G.mons.push(m);return m}
+function changeLevel(dir,force){
+ const p=G.p;
+ // leaving a stage's boss floor for a new stage: pick the next stage's variant first
+ if(!force&&dir>0&&G.depth>0&&G.depth<MAX_DEPTH&&G.depth%STAGE_LEN===0&&!(G.mods&&G.mods[G.depth/STAGE_LEN])&&!G.levels[G.depth+1]){stopTravel();openStageChoice();return}
+ if(G.depth>0)sfx('stairs');
+ if(G.depth>0){const o={};LVLKEYS.forEach(k=>o[k]=G[k]);G.levels[G.depth]=o;if(G._lc)delete G._lc[G.depth]}
  G.depth+=dir;const d=G.depth;G.regIdx=Math.min(STAGES-1,Math.floor((d-1)/STAGE_LEN));G.reg=REG[G.regIdx];
  const existing=G.levels[d];
- if(existing)LVLKEYS.forEach(k=>G[k]=existing[k]);else genLevel(d);
+ G.taintK=(MODS[(G.mods&&G.mods[G.regIdx])||'standard']||MODS.standard).taint;
+ if(existing){LVLKEYS.forEach(k=>G[k]=existing[k]);if(G._lc)delete G._lc[d]}else genLevel(d);
  const st=dir>0?G.sU:G.sD;let best=null;
  for(let r=1;r<W&&!best;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){const x=st.x+dx,y=st.y+dy;if(!best&&walk(x,y)&&G.map[y][x]!==2&&!monAt(x,y)&&!(x===G.sU.x&&y===G.sU.y)&&!(x===G.sD.x&&y===G.sD.y))best={x,y}}
- p.x=best.x;p.y=best.y;p.rx=p.x;p.ry=p.y;G.mons.forEach(m=>{m.rx=m.x;m.ry=m.y});
+ snapPos(p,best.x,best.y);panGoal=null;G.mons.forEach(m=>snapPos(m,m.x,m.y));
  pan.x=pan.y=0;G.sbx=null;G.dying=[];G.fogA=null;G.cx=p.x+.5;G.cy=p.y+.5;computeFOV();
  if(G.turn>0||d>1)msg(dir>0?`You descend into ${G.reg.n}. Depth ${d}.`:`You climb back to depth ${d}.`,'info');
  if(!existing&&(d-1)%STAGE_LEN===0){const st=G.regIdx+1;showHint(`STAGE ${st}: ${G.reg.n.toUpperCase()}`+(st===STAGES?' - the survivors are human, and armed.':''));if(d>1)msg('You arrive in a waste room. The dead dump their leavings here: take what you need.','info');else msg('Something has been dumped in this waste room. Take what you can.','info')}}
 const monAt=(x,y)=>G.mons.find(m=>m.x===x&&m.y===y);
-const walk=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&G.map[y][x]!==0;
+const walk=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&G.map[y][x]!==0&&G.map[y][x]!==7; // 7 = bone barricade (temporary wall)
 const opaque=(x,y)=>x<0||y<0||x>=W||y>=H||G.map[y][x]===0||G.map[y][x]===2;
 function computeFOV(){
  const p=G.p,r=stat().sight;for(const row of G.vis)row.fill(false);
  for(let y=p.y-r;y<=p.y+r;y++)for(let x=p.x-r;x<=p.x+r;x++){
   if(x<0||y<0||x>=W||y>=H)continue;if((x-p.x)**2+(y-p.y)**2>r*r+r)continue;
-  if(los(p.x,p.y,x,y)){G.vis[y][x]=true;G.seen[y][x]=true}}}
+  if(los(p.x,p.y,x,y)){G.vis[y][x]=true;G.seen[y][x]=true}}
+ if(G.dev)for(let y=0;y<H;y++)for(let x=0;x<W;x++){G.vis[y][x]=true;G.seen[y][x]=true}}
 function los(x0,y0,x1,y1){
  let dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1,e=dx-dy,x=x0,y=y0;
  while(!(x===x1&&y===y1)){const e2=2*e;if(e2>-dy){e-=dy;x+=sx}if(e2<dx){e+=dx;y+=sy}
@@ -98,4 +110,4 @@ function los(x0,y0,x1,y1){
 function blood(tx,ty,n,col='#8a1010',spd=1.6){for(let i=0;i<n;i++){const a=R()*6.28,s=R()*spd+.4;G.parts.push({x:tx*T+16,y:ty*T+16,vx:Math.cos(a)*s,vy:Math.sin(a)*s-.8,l:rnd(14,30),c:col,s:rnd(2,3)})}}
 function addInv(it){const p=G.p;
  if(it.type==='cons'&&CONS[it.id].stack){const e=p.inv.find(i=>i.id===it.id);if(e){e.count+=it.count;return true}}
- if(p.inv.length>=MAXINV)return false;p.inv.push(it);return true}
+ if(p.inv.length>=maxInv())return false;p.inv.push(it);return true}
