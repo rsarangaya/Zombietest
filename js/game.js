@@ -17,11 +17,12 @@ function playerAct(dx,dy){
    // a lone item is grabbed automatically; a pile is left for the player to pick through (see the ground panel)
    const here=G.items.filter(i=>i.x===nx&&i.y===ny);
    if(here.length===1){const e=here[0],it=e.it;if(addInv(it)){G.items.splice(G.items.indexOf(e),1);msg(`You grab: ${it.name}${it.count>1?' x'+it.count:''}.`,'good');sfx('pickup');stopTravel()}else msg('Backpack full.','warn')}
-   else if(here.length>1){stopTravel();msg(`${here.length} items lie here. Tap one to pick it up.`,'info')}}}
+   else if(here.length>1){stopTravel();msg(`${here.length} items lie here. Tap Ground (or your own tile) to grab the newest.`,'info')}}}
  if(acted)endTurn(moved,waited)}
 const taintCount=k=>SLOTS.reduce((a,s)=>a+(G.p.eq[s]&&G.p.eq[s].taint===k?1:0),0);
 function endTurn(moved,waited){
- const p=G.p;G.turn++;if(p.cloak>0)p.cloak--;if(p.drain>0&&G.turn%30===0)p.drain--;decayParts();for(const k of SLOTS){const e=p.eq[k];if(e&&e.cd>0)e.cd--} // graft ability cooldowns
+ const p=G.p;G.turn++;const hasted=p.haste>0;if(G.dreamer){tickDream();p.hunger=0}
+ if(p.cloak>0)p.cloak--;if(p.drain>0&&G.turn%30===0)p.drain--;decayParts();for(const k of SLOTS){const e=p.eq[k];if(e&&e.cd>0)e.cd--} // graft ability cooldowns
  const s=stat();p.hunger+=.35+taintCount('itch')*.12;if(p.candle>0)p.candle--;
  if(p.hunger>=100){hurt(1);if(G.turn%3===0)msg('Your hunger gnaws at you.','bad')}
  else if(G.turn%10===0&&p.hp<s.hp&&p.hunger<75)p.hp++;
@@ -34,6 +35,7 @@ function endTurn(moved,waited){
   if(G.map[p.y][p.x]===9){slowed=true;G.floaters.push({x:p.x,y:p.y,t:'mire',c:'#7a9a5a',l:18})} // wading through a swamp: monsters get an extra step
   else if(fx('sprint')&&p.rest>=5){free=true;msg('You sprint!','good')}
   else if(p.burst>0){p.burst--;free=true}
+  else if(hasted&&(p.hs=((p.hs||0)+1)%5)!==0)free=true; // Leg Surge: four of every five steps cost the dead no time
   else if(s.spd>0&&R()<s.spd)free=true;
   else if(s.spd<0&&R()<-s.spd)slowed=true;
   p.rest=0}
@@ -50,7 +52,7 @@ function tickDots(){for(const m of [...G.mons]){let d=0,col='#c33';
  if(m.poison>0){m.poison--;d++;col='#9c3'}
  if(m.burn>0){m.burn--;d+=2;col='#f93'}
  if(d){m.hp-=d;G.floaters.push({x:m.x,y:m.y,t:'-'+d,c:col,l:20});if(m.hp<=0){kill(m);if(G.over)return}}}}function strike(m){
- const s=stat(),p=G.p,dmg=rnd(1,3)+s.atk;
+ const s=stat(),p=G.p,dmg=(rnd(1,3)+s.atk)*(p.sage>0?3:1); // Sage Mode (debug mode) triples melee damage
  m.hp-=dmg;m.alert=true;G.floaters.push({x:m.x,y:m.y,t:'-'+dmg,c:'#fc6',l:25});blood(m.x,m.y,6+dmg);G.shake=Math.min(8,2+dmg/2);
  for(const k of ['armL','armR']){const a=p.eq[k];if(!a)continue;if(a.stats.atk)wear(k,a.fx==='brittle'?2:.35);
   if(a&&a.fx==='rend'&&R()<.25){m.bleed=4;G.floaters.push({x:m.x,y:m.y,t:'bleed',c:'#c33',l:20})}
@@ -66,15 +68,15 @@ function attack(m){
  if(fx('sweep')){const o=G.mons.find(o=>o!==m&&!o.ally&&o.hp>0&&Math.max(Math.abs(o.x-p.x),Math.abs(o.y-p.y))<=1);
   if(o){const h=Math.max(1,Math.ceil(d/2));o.hp-=h;o.alert=true;G.floaters.push({x:o.x,y:o.y,t:'-'+h,c:'#fc6',l:25});blood(o.x,o.y,5);if(o.hp<=0)kill(o)}}
  if(m.hp<=0&&!m.dead)kill(m)}
-function decayParts(){const slow=G.p.perk==='slowrot'?.8:1;for(const k of SLOTS){const e=G.p.eq[k];if(e)wear(k,(e.decay||.18)*(e.taint==='rot'?1.8:1)*slow)}
+function decayParts(){if(G.dreamer)return;const slow=G.p.perk==='slowrot'?.8:1;for(const k of SLOTS){const e=G.p.eq[k];if(e)wear(k,(e.decay||.18)*(e.taint==='rot'?1.8:1)*slow)}
  for(const it of G.p.inv)if(it.type==='part')it.dur=Math.max(0,it.dur-(it.decay||.18)*.25);
  G.p.hp=Math.min(G.p.hp,stat().hp)}
-function wear(k,n){const e=G.p.eq[k];if(!e)return;e.dur-=n;if(e.dur<=0)sfx('detach');
+function wear(k,n){const e=G.p.eq[k];if(!e||G.dreamer)return;e.dur-=n;if(e.dur<=0)sfx('detach');
  if(e.dur<=Math.floor(e.maxdur*.2)&&e.dur+n>Math.floor(e.maxdur*.2)&&e.dur>0)msg(`Your ${e.name} is about to fall off!`,'warn');
  if(e.dur<=0){msg(`Your ${e.name} rots away and falls off!`,'bad');G.p.eq[k]=null;G.floaters.push({x:G.p.x,y:G.p.y,t:'DETACHED',c:'#e55',l:30});blood(G.p.x,G.p.y,14,'#6a8a3a')}}
 function kill(m){
  if(m.dead)return;
- if(m.ally){removeMon(m);msg(`Your ${m.n} is destroyed.`,'warn');return} // minions leave no loot, xp or hunger relief
+ if(m.ally){if(m.k==='clone')addFX('puff',{org:m,col:'#eef',r:22,life:22});removeMon(m);msg(`Your ${m.n} is destroyed.`,'warn');return} // minions leave no loot, xp or hunger relief
  m.dead=true;sfx('kill');
  // loot never lands on a staircase (stepping there would take the stairs before you could pick it up)
  const onStairs=(m.x===G.sD.x&&m.y===G.sD.y)||(m.x===G.sU.x&&m.y===G.sU.y),at=(onStairs&&freeAdj(m))||{x:m.x,y:m.y};
@@ -129,10 +131,12 @@ function roleAct(m,cd){const p=G.p;
  return false}
 // a hostile next to one of your minions (and not next to you) hits the minion instead
 function hostileVsAlly(m,cd){if(cd<=1)return false;const al=G.mons.find(o=>o.ally&&!o.dead&&cheb(m,o)<=1);if(!al)return false;
+ if(al.k==='clone'&&R()<.92){lunge(m,al.x,al.y);G.floaters.push({x:al.x,y:al.y,t:'dodge',c:'#bdf',l:22});return true} // shadow clones slip most blows
  const d=Math.max(1,rnd(m.a[0],m.a[1])-1);al.hp-=d;lunge(m,al.x,al.y);G.floaters.push({x:al.x,y:al.y,t:'-'+d,c:'#f66',l:22});blood(al.x,al.y,5);
  if(al.hp<=0)kill(al);return true}
 function allyAct(m){const p=G.p;
- if(--m.life<=0){msg(`Your ${m.n} crumbles back into the dark.`,'info');removeMon(m);return}
+ if(m.k!=='clone'&&--m.life<=0){msg(`Your ${m.n} crumbles back into the dark.`,'info');removeMon(m);return}
+ if(m.k==='clone'){cloneAct(m);return}
  let t=null,bd=99;for(const o of G.mons){if(o.ally||o.dead||!G.vis[o.y][o.x])continue;const d=cheb(m,o);if(d<bd){bd=d;t=o}}
  const toward=(tx,ty)=>{let best=null,b=cheb(m,{x:tx,y:ty});
   for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){if(!dx&&!dy)continue;const x=m.x+dx,y=m.y+dy;if(!walk(x,y)||monAt(x,y)||(x===p.x&&y===p.y))continue;const d=Math.max(Math.abs(x-tx),Math.abs(y-ty));if(d<b){b=d;best=[x,y]}}

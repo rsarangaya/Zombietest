@@ -81,6 +81,15 @@ function drawFX(f,wx,wy){
   if(t<.78){ctx.fillStyle=col;ctx.beginPath();ctx.arc(bx,by,f.big?5:4,0,6.283);ctx.fill();glowDot(bx,by,9,col,.5);ctx.fillStyle='rgba(255,255,255,.7)';ctx.fillRect(bx-1,by-2,2,2)}
   else{const u=(t-.78)/.22;ctx.fillStyle=col;ctx.globalAlpha=(1-u)*.8;ctx.beginPath();ctx.arc(tx,ty,6+(f.splash||10)*u,0,6.283);ctx.fill();
    for(let i=0;i<7;i++){const an=i/7*6.283+f.seed;ctx.beginPath();ctx.arc(tx+Math.cos(an)*(8+12*u),ty+Math.sin(an)*(8+12*u)-4*u,2.2*(1-u)+.5,0,6.283);ctx.fill()}ctx.globalAlpha=1}break}
+ case 'rasen':{ // Rasenshuriken: a spinning chakra blade flies to the spot, then detonates across a 5x5 area
+  if(t<.5){const fl=easeOut(t/.5),bx=x+dx*fl,by=y+dy*fl;glowDot(bx,by,30,'#7ad0ff',.85);ctx.save();ctx.translate(bx,by);ctx.rotate(tick*.9);
+   ctx.fillStyle='#8ad8ff';for(let i=0;i<4;i++){ctx.rotate(Math.PI/2);ctx.beginPath();ctx.moveTo(4,-3);ctx.lineTo(20,0);ctx.lineTo(4,3);ctx.closePath();ctx.fill()}
+   ctx.fillStyle='#f2fcff';ctx.beginPath();ctx.arc(0,0,6,0,6.283);ctx.fill();ctx.restore()}
+  else{const u=(t-.5)/.5,r=T*2.6*easeOut(u);ctx.globalAlpha=(1-u)*.32;ctx.fillStyle='#9fe0ff';ctx.fillRect(tx-T*2.5,ty-T*2.5,T*5,T*5);
+   ctx.globalAlpha=1-u;ctx.strokeStyle='#e8fbff';ctx.lineWidth=4*(1-u)+1;ctx.beginPath();ctx.arc(tx,ty,r,0,6.283);ctx.stroke();
+   ctx.strokeStyle='#5ab8ff';ctx.lineWidth=2;for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(tx,ty,r*(.45+i*.2),u*9+i*2,u*9+i*2+2.4);ctx.stroke()}
+   glowDot(tx,ty,60*(1-u*.5),'#bfeaff',.9*(1-u));ctx.globalAlpha=1;spark(tx,ty,r,12,'#ffffff',1-u)}
+  break}
  case 'ring':{ // shockwave
   const r=(f.r||48)*easeOut(t),cx=f.atTarget?tx:x,cy=f.atTarget?ty:y;ctx.strokeStyle=col;ctx.globalAlpha=1-t;ctx.lineWidth=5*(1-t)+1;ctx.beginPath();ctx.arc(cx,cy,r,0,6.283);ctx.stroke();
   ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,r*.6,0,6.283);ctx.stroke();
@@ -166,6 +175,7 @@ function drawFX(f,wx,wy){
   let fa=0;if(o.fl){fa=1-(NOW-o.fl.t0)/220;if(fa<=0){o.fl=null;fa=0}}
   const alpha=e.pl?1:Math.min(1,o.va);ctx.globalAlpha=alpha;
   if(!e.pl&&o.ally){ctx.strokeStyle='rgba(120,230,210,.9)';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(px+16,py+29,13,5,0,0,6.3);ctx.stroke()}
+  if(e.pl&&o.sage>0)glowDot(px+16,py+18,32,'#ff9a30',.5+.15*Math.sin(tick/4)); // Sage Mode aura
   ctx.fillStyle='rgba(0,0,0,.5)';ctx.beginPath();ctx.ellipse(px+16+lx*.5,py+29,(e.pl?10:(o.k==='golem'||o.k==='boss'?13:9))-hop*.5,4,0,0,6.3);ctx.fill();
   ctx.save();if(face<0){ctx.translate(px+T+lx,py+ly);ctx.scale(-1,1)}else ctx.translate(px+lx,py+ly);
   ctx.translate(0,Math.round(-hop-br+fly));
@@ -251,7 +261,7 @@ function glide(o){
  const dt=Math.min(.05,frameDt/1000);
  // distance still to cover along the whole queue decides how hard to brake
  let rem=0,px=o.rx,py=o.ry;for(const [qx,qy] of q){rem+=Math.max(Math.abs(qx-px),Math.abs(qy-py));px=qx;py=qy} // chessboard distance: a diagonal step takes exactly as long as a straight one
- const vmax=VMAX*(1+.35*(q.length-1)),cruising=o.cruise&&NOW<o.cruise, // click-to-travel keeps feeding steps: do not brake between them
+ const vmax=VMAX*(1+.35*(q.length-1))*(o.haste>0?1.8:1),cruising=o.cruise&&NOW<o.cruise, // click-to-travel keeps feeding steps: do not brake between them
   vlim=cruising?Infinity:Math.max(.7,Math.sqrt(2*ACC*rem)),goal=Math.min(vmax,vlim);
  o.vel+=Math.max(-ACC*dt,Math.min(ACC*dt,goal-o.vel));
  let step=o.vel*dt;

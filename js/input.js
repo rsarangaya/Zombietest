@@ -29,9 +29,10 @@ addEventListener('keydown',e=>{
  if(l==='l'){e.preventDefault();openLog();return}
  if(l==='i'||l==='b'){e.preventDefault();packIsOpen()?closePack():openPack();return}
  if(anyWindowOpen())return; // the rest only applies to the bare map
- if(l==='g'){e.preventDefault();openPack();return}
+ if(l==='g'){e.preventDefault();grabTop();return}
  if(e.key==='>'){e.preventDefault();goStairs(G.sD);return}
  if(e.key==='<'){e.preventDefault();goStairs(G.sU);return}
+ if(/^Digit\d$/.test(e.code||'')&&!e.shiftKey){e.preventDefault();const n=+e.code.slice(5);if(n>=1&&n<=6&&!e.repeat)useQuick(n-1);return} // top-row 1-6 fire the quickslots (the numpad keeps moving you)
  const k=keyDir(e.key);
  if(!k){if(l==='r'){e.preventDefault();startRest()}else if(l==='x'){e.preventDefault();scentAct()}return}
  e.preventDefault();
@@ -82,8 +83,9 @@ cv.addEventListener('pointermove',e=>{if(mmDrag===e.pointerId){mmJump(e);return}
  a.x=e.clientX;a.y=e.clientY});
 cv.addEventListener('pointerup',e=>{if(mmDrag===e.pointerId){mmDrag=null;return}clearTimeout(longTimer);const a=pointers.get(e.pointerId);pointers.delete(e.pointerId);
  if(a&&!pinched&&!dragging&&!longFired&&!paused&&!G.over&&e.button!==2){const {x,y}=screenTile(e.clientX,e.clientY),p=G.p;stopTravel();
-  if(aim){const m=aim.cands.find(m=>m.x===x&&m.y===y&&!m.dead);if(m)fireAim(m);else cancelAim();if(!pointers.size){pinched=false;pinchDist=0;dragging=false;cv.classList.remove('drag')}return}
+  if(aim){const m=aim.cands.find(m=>m.x===x&&m.y===y&&!m.dead);if(m)fireAim(m);else if(aim.tile&&G.seen[y]&&G.seen[y][x]&&cheb({x,y},p)<=aim.range&&(aim.seen||(G.vis[y][x]&&los(p.x,p.y,x,y)))){const f=aim.fn;endAim();f(x,y)}else cancelAim();if(!pointers.size){pinched=false;pinchDist=0;dragging=false;cv.classList.remove('drag')}return}
   if(selItem&&selItem.mon)selItem=null; // tapping elsewhere dismisses the inspect card
+  if(x===p.x&&y===p.y&&G.items.some(i=>i.x===x&&i.y===y)){grabTop();return} // tap your own tile to pick up
   const adj=Math.max(Math.abs(x-p.x),Math.abs(y-p.y))===1;
   if(adj)playerAct(x-p.x,y-p.y);
   else if(visibleMonAt(x,y)){selItem={mon:visibleMonAt(x,y)};ui()} // distant monster: inspect instead of walking at it
@@ -101,10 +103,11 @@ $('bWait').onclick=()=>{stopTravel();playerAct(0,0)};
 $('bRest').onclick=startRest;
 $('bScent').onclick=scentAct;
 $('bPack').onclick=openPack;
-$('bGround').onclick=openPack;
+$('bGround').onclick=grabTop;
 $('packClose').onclick=closePack;
 $('pack').addEventListener('pointerdown',e=>{if(e.target===$('pack'))closePack()}); // tap outside the window to close it
 $('bLog').onclick=openLog;
+$('bStats').onclick=()=>{const open=$('statsPanel').style.display==='none';$('statsPanel').style.display=open?'':'none';$('statArrow').textContent=open?'▴':'▾';$('bStats').setAttribute('aria-expanded',open)}; // drop the stats down / roll them back up
 $('logClose').onclick=()=>{$('logModal').style.display='none'};
 $('mClose').onclick=resumeRun;
 $('qpClear').onclick=()=>{ensureQuick(G.p)[qpSlot]=null;closeQuickPicker();ui()};$('qpClose').onclick=closeQuickPicker;

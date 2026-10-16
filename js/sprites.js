@@ -40,6 +40,13 @@ S.medic=build(HUMAN,{a:'#ececec',h:'#5a3a3a'});
 S.stalker=build(SPR.golem,{a:'#262634',e:'#ff2020'});
 S.toad=build(SPR.bloat,{a:'#6a8a3a',e:'#201000',n:'#6a8a3a'});
 S.mirebrute=build(SPR.golem,{a:'#4a6a4a',e:'#ffe060'});
+// ---------- debug-only player sprite (/fightingdreamers): a zombie in an orange jumpsuit, spiky blond hair, forehead protector, whisker marks ----------
+{const ctr=s=>{const l=Math.floor((16-s.length)/2);return '.'.repeat(l)+s+'.'.repeat(16-l-s.length)};
+ const rows=['a.a.aa.a.a','aaaaaaaaaa','aaaaaaaaaaaa','ahhhhhhhhhha','ahhmmkkmmhha','assssssssa','asessssesa','nnssssnn','sswrrwss',
+  'kkoossssookk','ooorookkoooo','s'+'oooo'+'kk'+'oooo'+'s','s'+'d'.repeat(10)+'s','oooo..oooo','ooro..wwww','hhhh..hhhh'].map(ctr);
+ S.dreamer=build(rows,{a:'#f4c430',h:'#1b2340',m:'#c9d3dc',s:'#8fae86',n:'#26382a',o:'#ee6a1c',d:'#b04a10',e:'#ff2a2a',r:'#a01818',w:'#e8e4d0'});
+ // the shadow clone is the same figure with a pale blue cast
+ const c=document.createElement('canvas');c.width=c.height=16;const x=c.getContext('2d');x.drawImage(S.dreamer,0,0);x.globalCompositeOperation='source-atop';x.fillStyle='rgba(90,170,255,.42)';x.fillRect(0,0,16,16);S.clone=c}
 // ---------- body-region sprites ----------
 const SKIN='#8aa27a';
 const HEAD={ghoul:["..aaaa..",".aaaaaa.",".aeaaea.",".aaaaaa.",".awkkwa.",".awkkwa.","..aaaa.."],
@@ -114,6 +121,7 @@ function itIcon(it){const k=it.id;if(iconCache[k])return iconCache[k];
 function ghostIcon(slot){const kind=slot==='armL'||slot==='armR'?'arm':slot;return bigIcon(REGION[kind].def,'#666666',3)}
 const pcache={};
 function composePlayer(eq){
+ if(typeof G!=='undefined'&&G&&G.dreamer)return S.dreamer;
  const key=SLOTS.map(k=>eq[k]?eq[k].id:'-').join('|');if(pcache[key])return pcache[key];
  const cells=blank(16,16),pal=c=>mkPal({a:c});
  const g=(kind,slot)=>{const it=eq[slot];return it?{rows:REGION[kind][it.spr],col:it.col}:{rows:REGION[kind].def,col:SKIN}};

@@ -61,7 +61,7 @@ function partCard(t){if(!profile.parts[t.id])return `<div class="cx locked"><div
 function renderCodex(){
  const el=document.getElementById('codexBody');let h='';
  for(const b of document.querySelectorAll('#codexTabs button'))b.classList.toggle('on',b.dataset.tab===codexTab);
- if(codexTab==='mon'){const keys=Object.keys(MON),n=keys.filter(k=>profile.seen[k]).length;h=`<p><b>${n}/${keys.length}</b> signatures logged</p>`+keys.map(monCard).join('')}
+ if(codexTab==='mon'){const keys=Object.keys(MON).filter(k=>!MON[k].hidden),n=keys.filter(k=>profile.seen[k]).length;h=`<p><b>${n}/${keys.length}</b> signatures logged</p>`+keys.map(monCard).join('')}
  else if(codexTab==='part'){const n=TPL.filter(t=>profile.parts[t.id]).length;h=`<p><b>${n}/${TPL.length}</b> grafts discovered</p>`+TPL.map(partCard).join('')}
  else if(codexTab==='perk'){h=`<p>Marrow: <b>${profile.marrow}</b>. Earn it by descending and killing; spend it here. Pick one perk to start each run.</p>`+
   Object.entries(PERKS).map(([id,pk])=>`<div class="cx"><div><b>${pk.n}</b> <small>${pk.cost} Marrow</small><br><small>${pk.desc}</small></div>`+
@@ -80,7 +80,7 @@ function syncMenuPerk(){const s=document.getElementById('perkSel');if(!s)return;
 // ---- field manual ----
 function manualHtml(){return `
 <h3>GOAL</h3><p>Descend 20 floors in four stages and devour The Surgeon. Each stage starts in a waste room with a few free items.</p>
-<h3>CONTROLS</h3><p>Arrows/WASD/QEZC move · Space wait · R rest · X scent · I pack · G pick up · L log · &gt; / &lt; travel to stairs · TAB inspect next monster · Shift+1-9 quick buttons. Tap the map to travel, bump to attack, right-click or long-press a monster to inspect. Drag to look around, pinch/scroll to zoom, tap or drag the minimap to jump the camera (zoom is kept).</p>
+<h3>CONTROLS</h3><p>Arrows/WASD/QEZC move · Space wait · R rest · X scent · I pack · G pick up · L log · &gt; / &lt; travel to stairs · TAB inspect next monster · 1-6 (top row) use the quickslots; the numpad moves you. Tap the map to travel, bump to attack, right-click or long-press a monster to inspect. Drag to look around, pinch/scroll to zoom, tap or drag the minimap to jump the camera (zoom is kept).</p>
 <h3>GRAFTS</h3><p>Attach grafts to your head, torso, arms and legs. Every attached graft rots; at zero it falls off. Stored grafts rot at 25% speed. Unexamined grafts may be <b>tainted</b> (Rotting, Ravenous or Weeping) until you attach them; Formaldehyde Brine cleanses a taint. Two copies of the same graft can be <b>fused</b> (twice at most): +25% stats and rot capacity each time.</p>
 <h3>ABILITIES</h3><p>Many grafts have an active ability. Tap an attached graft, or use its button on the action bar. Abilities take a turn and then recharge. Some, like Play Dead, Lure, Fork and Bone Barricade, change the battle rather than just hurting things.</p>
 <h3>SPEED</h3><p>Your legs set your speed. No legs, or rotten legs, slow you: monsters get extra steps. Good legs let you slip away.</p>

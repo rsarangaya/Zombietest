@@ -8,7 +8,9 @@ function describe(it){
  return `<b>${it.name}</b> (${KINDNAME[it.kind]})<br>${b.join(', ')||'Just meat.'}${it.fxd?'<br>'+it.fxd:''}${abl}${bg}${tn}<br>Rot ${Math.ceil(it.dur)}/${it.maxdur} · Decay ${(it.decay||.18).toFixed(2)}/turn`}
 function ui(){
  const p=G.p,s=stat(),set=(id,v,max,txt)=>{const e=document.getElementById(id);e.firstChild.style.width=Math.max(0,Math.min(100,v/max*100))+'%';e.lastChild.textContent=txt};
- set('hp',p.hp,s.hp,`HP ${Math.max(0,p.hp)}/${s.hp}`);set('hu',p.hunger,100,`Hunger ${Math.min(100,Math.floor(p.hunger))}%`);set('xp',p.xp,p.lvl*10,`Lv ${p.lvl}  ATK+${s.atk} DEF+${s.def} SPD${s.spd>=0?'+':''}${Math.round(s.spd*100)}%`);
+ set('hp',p.hp,s.hp,`HP ${Math.max(0,p.hp)}/${s.hp}`);set('hu',p.hunger,100,`Hunger ${Math.min(100,Math.floor(p.hunger))}%`);
+ const row=(k,v)=>`<div><span>${k}</span><b>${v}</b></div>`;
+ document.getElementById('statList').innerHTML=row('Level',`${p.lvl} (${p.xp}/${p.lvl*10} xp)`)+row('Attack',`+${s.atk}`)+row('Defense',`+${s.def}`)+row('Speed',`${s.spd>=0?'+':''}${Math.round(s.spd*100)}%`)+row('Sight',s.sight)+row('Kills',p.kills);
  const modK=(G.mods&&G.mods[G.regIdx])||'standard',left=reekLeft(),hunting=G.reekState&&G.reekState[G.regIdx]==='active'&&left!==null,reek=left===null?'':hunting?' · <b style=\"color:#e55\">THE REEK HUNTS</b>':left<=REEK_BUDGET*.2?`  · <b style=\"color:#e90\">Reek in ${left}</b>`:` · <small style=\"color:#8a7a68\">Reek in ${left}</small>`;
  document.getElementById('where').innerHTML=`Stage ${G.regIdx+1} · ${G.reg.n} · Depth ${G.depth}/${MAX_DEPTH}${modK!=='standard'?' · '+MODS[modK].n:''}${G.p.bargain?' · ☠ Bargain':''}${reek}`;
  const sl=document.getElementById('slots');sl.innerHTML='';
@@ -64,8 +66,10 @@ function useQuick(i){
  curQuick=i;
  if(!e){openQuickPicker(i);return}
  if(e.t==='c'){const it=p.inv.find(x=>x.id===e.id);if(!it){msg(`You have no ${CONS[e.id].n} left.`,'warn');return}selItem={idx:p.inv.indexOf(it),it};useCons()}
+ else if(e.t==='d')useDream(e.id);
  else{const k=attachedSlot(e.id);if(!k){msg('That graft is not attached.','warn');return}useAbility(k)}}
 function quickIcon(e){
+ if(e.t==='d')return dreamIcon(e.id);
  if(e.t==='c'){const it=G.p.inv.find(x=>x.id===e.id);return cloneCanvas(itIcon(it||{type:'cons',id:e.id,col:CONS[e.id].col}))}
  const k=attachedSlot(e.id),t=TPL.find(t=>t.id===e.id);return cloneCanvas(k?itIcon(G.p.eq[k]):bigIcon(REGION[t.kind][t.spr],t.col,3))}
 function renderQuick(){
@@ -75,6 +79,9 @@ function renderQuick(){
   if(!e){b.classList.add('empty');b.innerHTML=`<i class="qk">${i+1}</i><span class="plus">+</span>`;b.title='Empty quickslot: tap or long-press to assign'}
   else if(e.t==='c'){const it=p.inv.find(x=>x.id===e.id),def=CONS[e.id];b.appendChild(quickIcon(e));
    b.insertAdjacentHTML('beforeend',`<i class="qk">${i+1}</i>${it&&it.count>1?`<span class="cnt">${it.count}</span>`:''}`);if(!it)b.classList.add('off');b.title=`${def.n}: ${def.desc}`+(it?'':' (none left)')}
+  else if(e.t==='d'){const d=DREAM[e.id],cd=(G.dreamCd&&G.dreamCd[e.id])||0;b.appendChild(quickIcon(e));
+   b.insertAdjacentHTML('beforeend',`<i class="qk">${i+1}</i>${cd>0?`<span class="cd">${cd}</span>`:''}`);
+   if(!G.dreamer)b.classList.add('off');else if(!cd)b.classList.add('ready');b.title=`${d.n}: ${d.desc}`}
   else{const k=attachedSlot(e.id),part=k&&p.eq[k],ab=ABIL[e.id];b.appendChild(quickIcon(e));
    b.insertAdjacentHTML('beforeend',`<i class="qk">${i+1}</i>${part&&part.cd>0?`<span class="cd">${part.cd}</span>`:''}`);
    if(!part)b.classList.add('off');else if(!(part.cd>0))b.classList.add('ready');b.title=`${ab.n}: ${ab.desc}`+(part?'':' (graft not attached)')}
@@ -104,6 +111,12 @@ function renderInspect(){
 function pickUp(){const s=selItem;if(!s||!s.ground||paused||G.over)return;const e=s.ground,i=G.items.indexOf(e);if(i<0)return;
  if(!addInv(e.it)){msg('Backpack full.','warn');return}
  G.items.splice(i,1);msg(`You grab: ${e.it.name}${e.it.count>1?' x'+e.it.count:''}.`,'good');sfx('pickup');selItem=null;ui()}
+// Ground button / tapping your own tile: grab the most recently dropped item here, one per tap (the pack's ground panel still lets you choose)
+function grabTop(){
+ if(paused||G.over)return;const p=G.p,here=G.items.filter(i=>i.x===p.x&&i.y===p.y);if(!here.length)return;
+ const e=here[here.length-1];
+ if(!addInv(e.it)){msg('Backpack full.','warn');return}
+ G.items.splice(G.items.indexOf(e),1);msg(`You grab: ${e.it.name}${e.it.count>1?' x'+e.it.count:''}.${here.length>1?` (${here.length-1} more here)`:''}`,'good');sfx('pickup');selItem=null;ui()}
 function detail(){const el=document.getElementById('detail');
  if(!selItem||!selItem.it){el.innerHTML='Tap an item to inspect it.';return}
  const it=selItem.it;let b='';
@@ -236,6 +249,7 @@ function openQuickPicker(i){
  const seen=new Set();let n=0;
  for(const it of p.inv)if(it.type==='cons'&&it.id!=='rites'&&!seen.has(it.id)){seen.add(it.id);n++;add(`${it.name}${it.count>1?' x'+it.count:''}`,CONS[it.id].throw?'throw':'use',cloneCanvas(itIcon(it)),{t:'c',id:it.id})}
  for(const k of SLOTS){const e=p.eq[k],ab=e&&ABIL[e.id];if(!ab)continue;n++;add(ab.n,`ability · ${e.name}`,cloneCanvas(itIcon(e)),{t:'a',id:e.id})}
+ if(G.dreamer)for(const id in DREAM){n++;add(DREAM[id].n,'jutsu',dreamIcon(id),{t:'d',id})}
  if(!n)list.innerHTML='<p>Nothing usable yet. Pack consumables and attached grafts with abilities show up here.</p>';
  qpEl().style.display='flex'}
 function closeQuickPicker(){qpEl().style.display='none';paused=false}
@@ -254,7 +268,7 @@ function aimBegin(fn,range){
  const el=document.getElementById('hint');clearTimeout(hintTimer);el.textContent='Choose a target: tap an enemy. Double-tap the slot for the nearest.';el.style.opacity=1;return true}
 function endAim(){aim=null;const el=document.getElementById('hint');if(el)el.style.opacity=0}
 function cancelAim(){if(aim)endAim()}
-function fireAim(m){if(!aim)return;const f=aim.fn;endAim();withTarget(m,f)}
-function aimNearest(){if(!aim)return;const p=G.p,best=[...aim.cands].sort((a,b)=>Math.max(Math.abs(a.x-p.x),Math.abs(a.y-p.y))-Math.max(Math.abs(b.x-p.x),Math.abs(b.y-p.y)))[0];fireAim(best)}
+function fireAim(m){if(!aim)return;const f=aim.fn;if(aim.tile){endAim();f(m.x,m.y);return}endAim();withTarget(m,f)}
+function aimNearest(){if(!aim)return;const p=G.p,best=[...aim.cands].sort((a,b)=>Math.max(Math.abs(a.x-p.x),Math.abs(a.y-p.y))-Math.max(Math.abs(b.x-p.x),Math.abs(b.y-p.y)))[0];if(!best){cancelAim();return}fireAim(best)}
 // the slot index only matters while a use is being dispatched
 const _useQuick=useQuick;useQuick=function(i){try{return _useQuick(i)}finally{curQuick=-1}};

@@ -12,7 +12,7 @@ let conWasPaused=false;
 function openConsole(){conWasPaused=paused;paused=true;stopTravel();document.getElementById('menu').style.display==='flex'&&(document.getElementById('menu').style.zIndex=10);con.modal.style.display='flex';con.inp.focus();if(!con.out.childNodes.length)conPrint('Debug console. Type "help".')}
 function closeConsole(){con.modal.style.display='none';con.inp.blur();paused=conWasPaused;document.getElementById('menu').style.zIndex=''}
 const DEBUG={
- help:()=>'help | seed [n] | goto <depth> | heal | hp <n> | xp <n> | hunger <n> | give <partId|itemId> [n] | ids | spawn <monster> | kill | reveal | tp | god | dev | marrow <n> | tiers | summary',
+ help:()=>'help | seed [n] | goto <depth> | heal | hp <n> | xp <n> | hunger <n> | give <partId|itemId> [n] | ids | spawn <monster> | kill | reveal | tp | god | dev | marrow <n> | tiers | summary | /fightingdreamers (toggle playtest mode)',
  seed:a=>a[0]?(newGame(parseSeed(a[0])),`new run, seed ${G.seed}`):`seed ${G.seed}`,
  goto:a=>{const d=Math.max(1,Math.min(MAX_DEPTH,+a[0]||1));let guard=0;while(G.depth<d&&guard++<MAX_DEPTH+2)changeLevel(1,true);while(G.depth>d&&guard++<2*MAX_DEPTH+4)changeLevel(-1,true);ui();return `now on depth ${G.depth}`},
  heal:()=>{G.p.hp=stat().hp;ui();return 'healed'},
@@ -30,9 +30,10 @@ const DEBUG={
  god:()=>{G.god=!G.god;return 'god mode '+(G.god?'on':'off')},
  dev:()=>{G.dev=!G.dev;return 'dev vision '+(G.dev?'on (everything revealed each turn)':'off')},
  marrow:a=>{profile.marrow+=+a[0]||0;saveProfile();syncMenuPerk();return 'marrow '+profile.marrow},
- summary:()=>runSummary()};
+ summary:()=>runSummary(),
+ fightingdreamers:()=>toggleDreamers()};
 function runCommand(line){
- const [c,...a]=line.trim().split(/\s+/);if(!c)return;conPrint('> '+line);
+ const [c,...a]=line.trim().replace(/^\/+/,'').split(/\s+/);if(!c)return;conPrint('> '+line);
  const f=DEBUG[c.toLowerCase()];if(!f){conPrint('unknown command; try "help"');return}
  try{G.debugUsed=true;const out=String(f(a));G.debugUsed=true;conPrint(out)}catch(e){conPrint('error: '+e.message)}}
 con.inp.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter'){runCommand(con.inp.value);con.inp.value=''}else if(e.key==='Escape'||e.key==='`'){e.preventDefault();closeConsole()}});

@@ -24,7 +24,7 @@ function saveRun(){
  G._lc=G._lc||{};const lv={};
  for(const d in G.levels){if(+d===G.depth)continue;lv[d]=G._lc[d]||(G._lc[d]=packLevel(G.levels[d]))} // visited floors are packed once and reused
  const core={seed:G.seed,mods:G.mods,depth:G.depth,turn:G.turn,ward:G.ward,rites:G.rites,dropCounts:G.dropCounts,p:G.p,log:G.log.slice(0,60),
-  kindBag:G.kindBag,stageTurns:G.stageTurns,reekState:G.reekState,reekHp:G.reekHp,debugUsed:G.debugUsed,dev:G.dev,god:G.god,newEntries:G.newEntries,ended:G.ended};
+  kindBag:G.kindBag,stageTurns:G.stageTurns,reekState:G.reekState,reekHp:G.reekHp,debugUsed:G.debugUsed,dev:G.dev,god:G.god,dreamer:G.dreamer,dreamCd:G.dreamCd,newEntries:G.newEntries,ended:G.ended};
  const sum={bargain:!!G.p.bargain,depth:G.depth,lvl:G.p.lvl,hp:G.p.hp,max:stat().hp,turn:G.turn,kills:G.p.kills,seed:G.seed,saved:Date.now()};
  try{localStorage.setItem(runKey(curSlot),JSON.stringify({v:1,rng:rngState,mid:MID,core,cur:packLevel(cur),lv},(k,v)=>TRANSIENT.has(k)?undefined:v));
   localStorage.setItem(sumKey(curSlot),JSON.stringify(sum))}catch(e){/* storage full or blocked: the run simply cannot be resumed later */}}

@@ -15,6 +15,11 @@ button:disabled{opacity:.45;cursor:default}
 :root{--sl:max(8px,env(safe-area-inset-left));--sr:max(8px,env(safe-area-inset-right));--st:max(8px,env(safe-area-inset-top));--sb:max(8px,env(safe-area-inset-bottom))}
 
 #hudTop{position:absolute;left:var(--sl);top:var(--st);width:min(300px,calc(100% - 140px));pointer-events:none;transform-origin:top left}
+#bStats{pointer-events:auto;min-height:0;height:26px;padding:0 10px;margin:0;font-size:12px;background:rgba(20,12,10,.82);color:#e8d8c0;border:1px solid #3a2f28;cursor:pointer}
+#statList div{display:flex;justify-content:space-between;gap:16px;font-size:11px;line-height:16px;color:#cbbfa8}
+#statList b{color:#fff;font-weight:normal}
+#statsPanel #where{margin-top:4px;padding-top:4px;border-top:1px solid #3a2f28}
+#statsPanel{pointer-events:auto;margin-top:4px;width:max-content;max-width:100%;padding:6px;background:rgba(12,8,7,.78);border:1px solid #3a2f28}
 .meter{height:18px;background:rgba(20,16,13,.82);border:1px solid #3a2f28;position:relative;margin-bottom:3px}
 .meter.thin{height:11px}
 .meter i{display:block;height:100%;transition:width .2s}

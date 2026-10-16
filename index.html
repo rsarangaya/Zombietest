@@ -12,8 +12,11 @@
   <div id="hudTop">
    <div class="meter" id="hp"><i></i><span></span></div>
    <div class="meter" id="hu"><i></i><span></span></div>
-   <div class="meter thin" id="xp"><i></i><span></span></div>
-   <div id="where"></div>
+   <button id="bStats" aria-expanded="false" title="Show or hide the other stats">Stats <span id="statArrow">▾</span></button>
+   <div id="statsPanel" style="display:none">
+    <div id="statList"></div>
+    <div id="where"></div>
+   </div>
   </div>
   <!-- top-right: system buttons (the minimap is drawn on the canvas underneath) -->
   <div id="hudRight"><button class="ibtn" id="bLog" title="Message log (L)">📜</button><button class="ibtn" id="bMenu" title="Menu (Esc)">☰</button></div>
@@ -119,5 +122,6 @@
 <script src="js/render.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/debug.js"></script>
+<script src="js/dreamers.js"></script>
 <script src="js/input.js"></script>
 </body></html>
