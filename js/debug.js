@@ -1,7 +1,7 @@
 // Playtest helpers: run summary for bug reports and a debug console (toggle with the ` key).
 function runSummary(){
  const p=G.p,s=stat(),eq=SLOTS.map(k=>`${SLOTNAME[k]}: ${p.eq[k]?`${p.eq[k].name} (${Math.ceil(p.eq[k].dur)}/${p.eq[k].maxdur}${p.eq[k].taint?', tainted '+p.eq[k].taint:''})`:'-'}`);
- return ["Romeo's Pixel Dungeon Inspired Zombie Rogue Like Game Name TBD but Soon Maybe ALso ITs HorroR and Harder To Beat Ideally - run summary",'build: ${BUILD}',`Seed: ${G.seed}`,`Status: ${G.over?(p.hp>0?'won':'dead'):'alive'}${G.debugUsed?' (debug console used)':''}`,
+ return ["Romeo's Pixel Dungeon Inspired Zombie Rogue Like Game Name TBD but Soon Maybe ALso ITs HorroR and Harder To Beat Ideally - run summary",`build: ${BUILD}`,`Seed: ${G.seed}`,`Status: ${G.over?(p.hp>0?'won':'dead'):'alive'}${G.debugUsed?' (debug console used)':''}`,
   `Depth ${G.depth}/${MAX_DEPTH} (stage ${G.regIdx+1}, ${G.reg.n}) · turn ${G.turn} · level ${p.lvl} · ${p.kills} kills`,`HP ${p.hp}/${s.hp} · ATK+${s.atk} DEF+${s.def} · SPD ${Math.round(s.spd*100)}% · hunger ${Math.floor(p.hunger)}%`,
   ...eq,G.p.bargain?'Challenge: BARGAIN taken (half max HP, one endgame graft)':'',`Pack: ${p.inv.map(i=>i.name+(i.count>1?' x'+i.count:'')).join(', ')||'empty'}`,`Browser: ${navigator.userAgent}`].join('\n')}
 function copySummary(){if(!inRun()&&!(G&&G.p)){return}const t=runSummary();
@@ -34,5 +34,5 @@ const DEBUG={
 function runCommand(line){
  const [c,...a]=line.trim().split(/\s+/);if(!c)return;conPrint('> '+line);
  const f=DEBUG[c.toLowerCase()];if(!f){conPrint('unknown command; try "help"');return}
- try{G.debugUsed=true;conPrint(String(f(a)))}catch(e){conPrint('error: '+e.message)}}
+ try{G.debugUsed=true;const out=String(f(a));G.debugUsed=true;conPrint(out)}catch(e){conPrint('error: '+e.message)}}
 con.inp.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter'){runCommand(con.inp.value);con.inp.value=''}else if(e.key==='Escape'||e.key==='`'){e.preventDefault();closeConsole()}});

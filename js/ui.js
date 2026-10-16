@@ -9,7 +9,7 @@ function describe(it){
 function ui(){
  const p=G.p,s=stat(),set=(id,v,max,txt)=>{const e=document.getElementById(id);e.firstChild.style.width=Math.max(0,Math.min(100,v/max*100))+'%';e.lastChild.textContent=txt};
  set('hp',p.hp,s.hp,`HP ${Math.max(0,p.hp)}/${s.hp}`);set('hu',p.hunger,100,`Hunger ${Math.min(100,Math.floor(p.hunger))}%`);set('xp',p.xp,p.lvl*10,`Lv ${p.lvl}  ATK+${s.atk} DEF+${s.def} SPD${s.spd>=0?'+':''}${Math.round(s.spd*100)}%`);
- const modK=(G.mods&&G.mods[G.regIdx])||'standard',ft=(G.ft&&G.ft[G.depth])||0,reek=ft>=REEK_WARN?(G.reek&&G.reek[G.depth]?' · <b style=\"color:#e55\">THE REEK HUNTS</b>':' · <b style=\"color:#e90\">a smell grows...</b>'):'';
+ const modK=(G.mods&&G.mods[G.regIdx])||'standard',left=reekLeft(),hunting=G.reekState&&G.reekState[G.regIdx]==='active'&&left!==null,reek=left===null?'':hunting?' · <b style=\"color:#e55\">THE REEK HUNTS</b>':left<=REEK_BUDGET*.2?`  · <b style=\"color:#e90\">Reek in ${left}</b>`:` · <small style=\"color:#8a7a68\">Reek in ${left}</small>`;
  document.getElementById('where').innerHTML=`Stage ${G.regIdx+1} · ${G.reg.n} · Depth ${G.depth}/${MAX_DEPTH}${modK!=='standard'?' · '+MODS[modK].n:''}${G.p.bargain?' · ☠ Bargain':''}${reek}`;
  const sl=document.getElementById('slots');sl.innerHTML='';
  for(const k of SLOTS){const e=p.eq[k],d=document.createElement('div');d.className='slot'+(selItem&&selItem.eq===k?' sel':'');
@@ -24,6 +24,9 @@ function ui(){
  // ground panel: every item on the player's tile, each picked up individually
  const here=G.items.filter(i=>i.x===p.x&&i.y===p.y),gv=document.getElementById('floor');
  if(selItem&&selItem.ground&&!here.includes(selItem.ground))selItem=null;
+ // a selection can go stale (a graft rotted off, was offered at the altar, or the pack was reshuffled): drop it rather than act on the wrong item
+ if(selItem&&selItem.eq&&p.eq[selItem.eq]!==selItem.it)selItem=null;
+ if(selItem&&selItem.idx!==undefined&&p.inv[selItem.idx]!==selItem.it)selItem=null;
  if(selItem&&selItem.mon&&(selItem.mon.dead||!G.mons.includes(selItem.mon)||!G.vis[selItem.mon.y][selItem.mon.x]))selItem=null;
  gv.innerHTML='';gv.style.display=document.getElementById('floorH').style.display=here.length?'':'none';
  here.forEach(e=>{const d=document.createElement('div');d.className='inv'+(selItem&&selItem.ground===e?' sel':'');d.appendChild(cloneCanvas(itIcon(e.it)));d.title=e.it.name;
@@ -42,23 +45,47 @@ function compareLine(it){ // how a graft in the pack/on the ground stacks up aga
  const cur=p.eq[slot],d=[];
  for(const k of ['atk','def','hp','sight','steal','spd']){const a=it.stats[k]||0,b=cur?(cur.stats[k]||0):0;if(a!==b){const v=k==='spd'?Math.round((a-b)*100)+'%':a-b;d.push(`<span class="${a>b?'good':'bad'}">${k.toUpperCase()} ${a>b?'+':''}${v}</span>`)}}
  return `<br><small>${cur?'vs '+cur.name:'Slot empty'}: ${d.join(', ')||'no stat change'}</small>`}
-// consumables worth a one-tap button, in priority order
-const QUICK_ORDER=['flask','scrap','meat','shards','pyre','grease','jar','brine','candle','serum'];
-let hudActions=[]; // {run, label} for Shift+1..9
-function quickBtn(html,title,cls,onclick){const b=document.createElement('button');b.className='tbtn '+cls;b.innerHTML=html;b.title=title;b.onclick=onclick;return b}
+// ---------- quickslots ----------
+// Six fixed slots above the action bar. Each holds a consumable (by item type) or a graft ability (by graft type). Tap to use;
+// long-press (or right-click) to choose what the slot holds. A slot keeps its entry even when you run out, so it is ready again
+// after a restock. Abilities follow the graft: if it is detached the slot greys out.
+const QSLOTS=6;
+let hudActions=[]; // Shift+1..6 fire the matching slot
+function ensureQuick(p){if(!p.quick)p.quick=[{t:'c',id:'flask'},{t:'c',id:'scrap'},null,null,null,null];if(!p.qSeen)p.qSeen={};return p.quick}
+// a newly attached graft with an active ability claims the first empty slot (once, so clearing it sticks)
+function autoQuick(it){const p=G.p,q=ensureQuick(p);if(!it||!ABIL[it.id]||p.qSeen[it.id])return;p.qSeen[it.id]=1;const i=q.findIndex(x=>!x);if(i>=0)q[i]={t:'a',id:it.id}}
+const attachedSlot=id=>SLOTS.find(s=>G.p.eq[s]&&G.p.eq[s].id===id);
+function useQuick(i){
+ if(paused||G.over||!inRun())return;const p=G.p,e=ensureQuick(p)[i];
+ if(aim){ // a quick second tap on the same slot throws/fires at the nearest enemy; anything else cancels the aim first
+  const same=aim.slotIdx===i,quick=performance.now()-aim.t0<AIM_DOUBLE_MS;
+  if(same&&quick){aimNearest();return}
+  cancelAim();if(same)return}
+ curQuick=i;
+ if(!e){openQuickPicker(i);return}
+ if(e.t==='c'){const it=p.inv.find(x=>x.id===e.id);if(!it){msg(`You have no ${CONS[e.id].n} left.`,'warn');return}selItem={idx:p.inv.indexOf(it),it};useCons()}
+ else{const k=attachedSlot(e.id);if(!k){msg('That graft is not attached.','warn');return}useAbility(k)}}
+function quickIcon(e){
+ if(e.t==='c'){const it=G.p.inv.find(x=>x.id===e.id);return cloneCanvas(itIcon(it||{type:'cons',id:e.id,col:CONS[e.id].col}))}
+ const k=attachedSlot(e.id),t=TPL.find(t=>t.id===e.id);return cloneCanvas(k?itIcon(G.p.eq[k]):bigIcon(REGION[t.kind][t.spr],t.col,3))}
 function renderQuick(){
- const q=document.getElementById('quick'),p=G.p;q.innerHTML='';hudActions=[];
- // 1) ready/recharging active abilities of attached grafts
- for(const k of SLOTS){const e=p.eq[k],ab=e&&ABIL[e.id];if(!ab)continue;
-  const b=quickBtn('',`${ab.n}: ${ab.desc}`,e.cd>0?'':'ready',()=>useAbility(k));
-  b.appendChild(cloneCanvas(itIcon(e)));b.insertAdjacentHTML('beforeend',`<small>${ab.n}</small>`);if(e.cd>0)b.insertAdjacentHTML('beforeend',`<span class="cd">${e.cd}</span>`);
-  q.appendChild(b);hudActions.push(()=>useAbility(k))}
- // 2) up to three consumables
- let n=0;for(const id of QUICK_ORDER){if(n>=3)break;const it=p.inv.find(i=>i.id===id);if(!it)continue;n++;
-  const act=()=>{if(paused||G.over)return;selItem={idx:p.inv.indexOf(it),it};useCons()};
-  const b=quickBtn('',`${CONS[id].n}: ${CONS[id].desc}`,'',act);b.appendChild(cloneCanvas(itIcon(it)));
-  b.insertAdjacentHTML('beforeend',`<small>${CONS[id].throw?'Throw':'Use'}</small>${it.count>1?`<span class="cnt">${it.count}</span>`:''}`);q.appendChild(b);hudActions.push(act)}
- // contextual buttons
+ const p=G.p,q=ensureQuick(p),bar=document.getElementById('quickbar');bar.innerHTML='';
+ q.forEach((e,i)=>{
+  const b=document.createElement('button');b.className='qbtn';
+  if(!e){b.classList.add('empty');b.innerHTML=`<i class="qk">${i+1}</i><span class="plus">+</span>`;b.title='Empty quickslot: tap or long-press to assign'}
+  else if(e.t==='c'){const it=p.inv.find(x=>x.id===e.id),def=CONS[e.id];b.appendChild(quickIcon(e));
+   b.insertAdjacentHTML('beforeend',`<i class="qk">${i+1}</i>${it&&it.count>1?`<span class="cnt">${it.count}</span>`:''}`);if(!it)b.classList.add('off');b.title=`${def.n}: ${def.desc}`+(it?'':' (none left)')}
+  else{const k=attachedSlot(e.id),part=k&&p.eq[k],ab=ABIL[e.id];b.appendChild(quickIcon(e));
+   b.insertAdjacentHTML('beforeend',`<i class="qk">${i+1}</i>${part&&part.cd>0?`<span class="cd">${part.cd}</span>`:''}`);
+   if(!part)b.classList.add('off');else if(!(part.cd>0))b.classList.add('ready');b.title=`${ab.n}: ${ab.desc}`+(part?'':' (graft not attached)')}
+  // tap uses it; a long press (touch) or right-click chooses what the slot holds
+  let timer=null,fired=false;
+  b.addEventListener('pointerdown',()=>{fired=false;timer=setTimeout(()=>{fired=true;openQuickPicker(i)},450)});
+  for(const ev of ['pointerup','pointerleave','pointercancel'])b.addEventListener(ev,()=>clearTimeout(timer));
+  b.addEventListener('click',ev=>{if(fired){ev.preventDefault();fired=false;return}useQuick(i)});
+  b.addEventListener('contextmenu',ev=>{ev.preventDefault();clearTimeout(timer);openQuickPicker(i)});
+  bar.appendChild(b)});
+ hudActions=q.map((_,i)=>()=>useQuick(i)); // contextual buttons
  const here=G.items.filter(i=>i.x===p.x&&i.y===p.y),bg=document.getElementById('bGround');
  bg.style.display=here.length?'':'none';bg.querySelector('small').textContent=here.length>1?`Ground ${here.length}`:'Ground';
  const seen=s=>s.x>=0&&G.seen[s.y]&&G.seen[s.y][s.x];
@@ -91,7 +118,7 @@ function equip(){if(paused||G.over)return;const p=G.p,it=selItem.it;if(it.dur<=0
  if(it.kind==='arm')slot=!p.eq.armL?'armL':!p.eq.armR?'armR':(p.eq.armL.dur<=p.eq.armR.dur?'armL':'armR');
  p.inv.splice(selItem.idx,1);const old=p.eq[slot];p.eq[slot]=it;it.slot=slot;
  if(old)p.inv.push(old);msg(`You stitch on ${it.name}.`,'info');sfx('equip');
- if(ABIL[it.id])hintOnce('ability');
+ if(ABIL[it.id]){hintOnce('ability');autoQuick(it)}
  if(!it.known){it.known=true;if(it.taint){msg(`It writhes! The graft is TAINTED (${TAINT[it.taint].n}): ${TAINT[it.taint].d}.`,'bad');sfx('taint')}}
  selItem=null;afterManage()}
 function detach(k){const p=G.p,e=p.eq[k];if(!e)return;if(p.inv.length>=maxInv()){msg('Backpack full.','warn');return}p.eq[k]=null;p.inv.push(e);msg(`You tear off your ${e.name}.`);selItem=null;afterManage()}
@@ -103,9 +130,12 @@ function dropIt(){const p=G.p,it=selItem.it; // dropped items stack on the tile 
  p.inv.splice(selItem.idx,1);G.items.push({x:p.x,y:p.y,it});msg(`You drop ${it.name}.`);selItem=null;afterManage()}
 function afterManage(){const s=stat();if(G.p.hp>s.hp)G.p.hp=s.hp;if(G.p.hp<=0){die();return}computeFOV();ui()}
 function consume(it){it.count--;if(it.count<=0){const i=G.p.inv.indexOf(it);if(i>=0)G.p.inv.splice(i,1)}}
-function nearestTarget(){const p=G.p;let best=null,bd=99;for(const m of G.mons){if(m.ally||!G.vis[m.y][m.x])continue;const d=Math.max(Math.abs(m.x-p.x),Math.abs(m.y-p.y));if(d<=5&&d<bd&&los(p.x,p.y,m.x,m.y)){bd=d;best=m}}return best}
+function nearestTarget(){const p=G.p;
+ if(pickedTarget){const m=pickedTarget;if(!m.dead&&!m.ally&&G.vis[m.y][m.x]&&Math.max(Math.abs(m.x-p.x),Math.abs(m.y-p.y))<=5&&los(p.x,p.y,m.x,m.y))return m;msg("That target is out of range.","warn");return null}
+ let best=null,bd=99;for(const m of G.mons){if(m.ally||!G.vis[m.y][m.x])continue;const d=Math.max(Math.abs(m.x-p.x),Math.abs(m.y-p.y));if(d<=5&&d<bd&&los(p.x,p.y,m.x,m.y)){bd=d;best=m}}return best}
 function useCons(){if(paused||G.over)return;stopTravel();
  const it=selItem.it,p=G.p,s=stat(),id=it.id;
+ if(CONS[id].throw&&!pickedTarget&&aimBegin(()=>{selItem={idx:p.inv.indexOf(it),it};useCons()},5))return; // choose who to throw at
  if(CONS[id].throw){const t=nearestTarget();if(!t){msg('No target in range.','warn');return}
   consume(it);sfx('throw');
   addFX('lob',{org:p,tgt:t,col:id==='shards'?'#ddd8c0':id==='pyre'?'#f93':id==='grease'?'#6a6a98':'#9ad030',life:20,big:id!=='shards',splash:id==='shards'?4:14});
@@ -191,3 +221,40 @@ function makeOffering(){
  else{const it=mkAltarPart(res.tier,G.depth);G.items.push({x,y,it});
   msg({lower:`The altar spits out a lesser graft: ${it.name}.`,same:`The altar returns its equal: ${it.name}.`,up1:`The altar gives back something BETTER: ${it.name}!`,up2:`The altar gives back something far BETTER: ${it.name}!!`}[res.outcome],res.outcome==='lower'?'warn':'good')}
  afterManage()}
+
+// ---------- quickslot picker (opened by a long press) ----------
+let qpSlot=0;
+const qpEl=()=>document.getElementById('qpick');
+const qpOpen=()=>qpEl().style.display==='flex';
+function openQuickPicker(i){
+ if(!inRun()||G.over)return;stopTravel();qpSlot=i;paused=true;const p=G.p,q=ensureQuick(p),list=document.getElementById('qpList');list.innerHTML='';
+ document.getElementById('qpTitle').textContent=`Quickslot ${i+1}`;
+ const add=(label,sub,canvas,entry)=>{const d=document.createElement('div');d.className='offer'+(q[i]&&entry&&q[i].t===entry.t&&q[i].id===entry.id?' on':'');
+  d.appendChild(canvas);d.insertAdjacentHTML('beforeend',`<span>${label}<br><small>${sub}</small></span>`);
+  d.onclick=()=>{q.forEach((x,j)=>{if(x&&x.t===entry.t&&x.id===entry.id&&j!==i)q[j]=null});q[i]=entry;closeQuickPicker();sfx('equip');ui()};list.appendChild(d)};
+ // only things that can actually be used or thrown: pack consumables (not passive ones) and abilities of attached grafts
+ const seen=new Set();let n=0;
+ for(const it of p.inv)if(it.type==='cons'&&it.id!=='rites'&&!seen.has(it.id)){seen.add(it.id);n++;add(`${it.name}${it.count>1?' x'+it.count:''}`,CONS[it.id].throw?'throw':'use',cloneCanvas(itIcon(it)),{t:'c',id:it.id})}
+ for(const k of SLOTS){const e=p.eq[k],ab=e&&ABIL[e.id];if(!ab)continue;n++;add(ab.n,`ability · ${e.name}`,cloneCanvas(itIcon(e)),{t:'a',id:e.id})}
+ if(!n)list.innerHTML='<p>Nothing usable yet. Pack consumables and attached grafts with abilities show up here.</p>';
+ qpEl().style.display='flex'}
+function closeQuickPicker(){qpEl().style.display='none';paused=false}
+
+// ---------- aiming: tap a throwable or targeted ability, then tap the enemy ----------
+// No confirmation step: tapping an enemy fires immediately. A lone candidate is used automatically, and a quick double tap on the
+// quickslot uses the nearest enemy. Tapping empty ground, another slot, moving or Esc cancels.
+const AIM_DOUBLE_MS=450;
+let aim=null,pickedTarget=null,curQuick=-1;
+function withTarget(m,fn){pickedTarget=m;try{fn()}finally{pickedTarget=null}}
+function aimCands(range){const p=G.p;return G.mons.filter(m=>!m.ally&&!m.dead&&G.vis[m.y][m.x]&&Math.max(Math.abs(m.x-p.x),Math.abs(m.y-p.y))<=range&&(range<=1||los(p.x,p.y,m.x,m.y)))}
+function aimBegin(fn,range){
+ const c=aimCands(range);if(!c.length)return false; // nothing in reach: the normal code reports it
+ if(c.length===1){curQuick=-1;withTarget(c[0],fn);return true}
+ aim={fn,range,cands:c,slotIdx:curQuick,t0:performance.now()};curQuick=-1;
+ const el=document.getElementById('hint');clearTimeout(hintTimer);el.textContent='Choose a target: tap an enemy. Double-tap the slot for the nearest.';el.style.opacity=1;return true}
+function endAim(){aim=null;const el=document.getElementById('hint');if(el)el.style.opacity=0}
+function cancelAim(){if(aim)endAim()}
+function fireAim(m){if(!aim)return;const f=aim.fn;endAim();withTarget(m,f)}
+function aimNearest(){if(!aim)return;const p=G.p,best=[...aim.cands].sort((a,b)=>Math.max(Math.abs(a.x-p.x),Math.abs(a.y-p.y))-Math.max(Math.abs(b.x-p.x),Math.abs(b.y-p.y)))[0];fireAim(best)}
+// the slot index only matters while a use is being dispatched
+const _useQuick=useQuick;useQuick=function(i){try{return _useQuick(i)}finally{curQuick=-1}};

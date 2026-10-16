@@ -1,4 +1,5 @@
 function playerAct(dx,dy){
+ if(aim)cancelAim();
  if(G.over||paused||Math.abs(dx)>1||Math.abs(dy)>1)return;const p=G.p;let acted=false,moved=false,waited=false;
  if(dx===0&&dy===0){acted=true;waited=true}
  else{
@@ -75,6 +76,9 @@ function kill(m){
  if(m.dead)return;
  if(m.ally){removeMon(m);msg(`Your ${m.n} is destroyed.`,'warn');return} // minions leave no loot, xp or hunger relief
  m.dead=true;sfx('kill');
+ // loot never lands on a staircase (stepping there would take the stairs before you could pick it up)
+ const onStairs=(m.x===G.sD.x&&m.y===G.sD.y)||(m.x===G.sU.x&&m.y===G.sU.y),at=(onStairs&&freeAdj(m))||{x:m.x,y:m.y};
+ if(m.k==='stalker'){G.reekState=G.reekState||{};G.reekState[G.regIdx]='dead';G.reekHp=0;msg('The Reek is finally still. It will not hunt you again this stage.','good')}
  G.dying.push({k:m.k,x:m.x,y:m.y,rx:m.rx===undefined?m.x:m.rx,ry:m.ry===undefined?m.y:m.ry,fx:m.fx,t0:NOW});
  const p=G.p;G.mons=G.mons.filter(x=>x!==m);p.kills++;blood(m.x,m.y,18,m.k==='bloat'?'#78a02a':'#8a1010',2.4);G.decor[m.y][m.x]=1;
  p.hunger=Math.max(0,p.hunger-m.food);const heal=1+fx('infest')+(p.perk==='scavenger'?1:0);p.hp=Math.min(stat().hp,p.hp+heal);
@@ -84,11 +88,11 @@ function kill(m){
  // two independent drops: one of the monster's own body parts (guaranteed from bosses), and the usual supplies
  if(m.mini||m.k==='boss'||R()<(PART_CHANCE[m.k]||0)){
   const it=mkMonsterPart(m,m.k==='boss'?MAX_DEPTH:m.mini?G.depth+2:G.depth);
-  G.items.push({x:m.x,y:m.y,it});msg(`The ${m.n} leaves a body part: ${it.name}.`,'good')}
- if(m.loot){const it=mkCons(pick(m.loot));G.items.push({x:m.x,y:m.y,it});msg(`The ${m.n} was carrying: ${it.name}.`,'good')} // swamp natives always drop supplies
+  G.items.push({x:at.x,y:at.y,it});msg(`The ${m.n} leaves a body part: ${it.name}.`,'good')}
+ if(m.loot){const it=mkCons(pick(m.loot));G.items.push({x:at.x,y:at.y,it});msg(`The ${m.n} was carrying: ${it.name}.`,'good')} // swamp natives always drop supplies
  if(!m.mini&&m.k!=='boss'&&(G.dropCounts[G.depth]||0)<3&&R()<m.drop){
   G.dropCounts[G.depth]=(G.dropCounts[G.depth]||0)+1;const it=mkLoot(G.depth,m.k,0);
-  G.items.push({x:m.x,y:m.y,it});msg(`It left something: ${it.name}.`,'info')}
+  G.items.push({x:at.x,y:at.y,it});msg(`It left something: ${it.name}.`,'info')}
  if(m.k==='boss')win()}
 function hurt(n){const p=G.p;if(G.god)return;p.cloak=0;p.hp-=n;sfx('hurt');if(settings.haptics&&navigator.vibrate)try{navigator.vibrate(Math.min(70,20+n*6))}catch(e){}G.floaters.push({x:p.x,y:p.y,t:'-'+n,c:'#f44',l:25});blood(p.x,p.y,8,'#6a8a3a');G.shake=Math.min(10,3+n/2);stopTravel()}
 // a monster's step is queued for animation with a small stagger so a crowd ripples instead of all snapping at once
@@ -187,15 +191,24 @@ function bossTick(){
   const f=freeAdj(m);if(!f)continue;const k=Array.isArray(tk.k)?pick(tk.k):tk.k;
   spawn(k,f,{alert:true,from:m.id,grp:m.grp});addFX('puff',{org:m,col:tk.fn==='reinforce'?'#9fb0c8':'#a08050',r:26,life:30});
   msg(tk.fn==='reinforce'?`${m.n} calls for reinforcements!`:`The ${m.n} births another maggot.`,'bad');sfx('warn')}}
-const REEK_WARN=110,REEK_AT=140;
+// ---- The Reek: a per-stage clock ----
+// Every stage gives you a budget of turns to reach its boss floor (floors 5, 10, 15 and 20): REEK_PER_FLOOR turns for each of the
+// stage's floors. Run out before you arrive and the Reek starts hunting you. It then follows you down each floor of the stage until you
+// reach the boss floor or kill it. Each new stage starts a fresh clock.
+const REEK_PER_FLOOR=350,REEK_BUDGET=REEK_PER_FLOOR*STAGE_LEN,REEK_WARN_AT=.8;
+const bossFloor=idx=>(idx+1)*STAGE_LEN;
+// turns left on this stage's clock, or null when the clock is off (boss floor reached, or the Reek was killed)
+function reekLeft(){const i=G.regIdx;if(G.depth>=bossFloor(i)||(G.reekState&&G.reekState[i]==='dead'))return null;return Math.max(0,REEK_BUDGET-((G.stageTurns&&G.stageTurns[i])||0))}
+function summonReek(){
+ const far=G.rooms.slice(1).sort((a,b)=>Math.hypot(b.cx-G.p.x,b.cy-G.p.y)-Math.hypot(a.cx-G.p.x,a.cy-G.p.y))[0];
+ let pos=null;for(let i=0;i<40&&!pos;i++){const x=rnd(far.x,far.x+far.w-1),y=rnd(far.y,far.y+far.h-1);if(G.map[y][x]===1&&!monAt(x,y))pos={x,y}}
+ if(pos){const m=spawn('stalker',pos,{alert:true,grp:-1});if(G.reekHp)m.hp=Math.min(m.max,G.reekHp);sfx('death');G.shake=8;return true}return false}
 function reekCheck(){
- G.ft=G.ft||{};G.reek=G.reek||{};const n=G.ft[G.depth]=(G.ft[G.depth]||0)+1;
- if(n===REEK_WARN){msg('A foul smell drifts closer. Something is tracking you. Do not linger.','bad');showHint('The Reek is coming. Take the stairs or be ready to fight it.')}
- if(n>=REEK_AT&&!G.reek[G.depth]){
-  const far=G.rooms.slice(1).sort((a,b)=>Math.hypot(b.cx-G.p.x,b.cy-G.p.y)-Math.hypot(a.cx-G.p.x,a.cy-G.p.y))[0];
-  let pos=null;for(let i=0;i<40&&!pos;i++){const x=rnd(far.x,far.x+far.w-1),y=rnd(far.y,far.y+far.h-1);if(G.map[y][x]===1&&!monAt(x,y))pos={x,y}}
-  if(pos){spawn('stalker',pos,{alert:true,grp:-1});G.reek[G.depth]=1;msg('THE REEK has found you.','bad');sfx('death');G.shake=8;showHint('THE REEK: relentless and strong. Run, or kill it for a guaranteed graft.')}}}
-function worldTick(){
+ G.stageTurns=G.stageTurns||{};G.reekState=G.reekState||{};const i=G.regIdx;
+ if(G.depth>=bossFloor(i)||G.reekState[i]==='dead')return; // you made it to the boss (or killed it): this stage's clock is off
+ const n=G.stageTurns[i]=(G.stageTurns[i]||0)+1;
+ if(n===Math.round(REEK_BUDGET*REEK_WARN_AT)){msg(`A foul smell drifts closer. ${REEK_BUDGET-n} turns left to reach the boss before the Reek comes.`,'bad');showHint('The Reek is tracking you. Reach the stage boss before the clock runs out.')}
+ if(n>=REEK_BUDGET&&!G.reekState[i]){G.reekState[i]='active';if(summonReek()){msg('THE REEK has found you. It will follow you down until you reach the boss.','bad');showHint('THE REEK: relentless and strong. Run for the boss, or kill it for a guaranteed graft.')}}}function worldTick(){
  for(const b of [...(G.barr||[])])if(G.turn>=b.t){if(G.map[b.y][b.x]===7)G.map[b.y][b.x]=1;G.barr.splice(G.barr.indexOf(b),1)}
  bossTick();reekCheck()}// A monster's attack is either a quick strike that lands right away (lighter, and stepping aside cannot dodge it) or, some of the
 // time, a telegraphed HEAVY blow: a red tile now, a much harder hit next turn. `heavy` is the chance of the heavy kind per monster.

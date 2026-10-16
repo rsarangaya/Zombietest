@@ -24,13 +24,13 @@
   <!-- bottom: fading messages + action bar -->
   <div id="bottom">
    <div id="log"></div>
+   <div id="quickbar"></div>
    <div id="toolbar">
     <button class="tbtn" id="bWait" title="Wait a turn (Space)"><b>⌛</b><small>Wait</small></button>
     <button class="tbtn" id="bRest" title="Rest until healed (R)"><b>💤</b><small>Rest</small></button>
     <button class="tbtn" id="bScent" title="Sniff out enemies and the layout (X)"><b>👃</b><small>Scent</small></button>
     <button class="tbtn" id="bPack" title="Backpack and body (I)"><b>🎒</b><small>Pack</small></button>
     <button class="tbtn" id="bGround" title="Items on this tile (G)" style="display:none"><b>✋</b><small>Ground</small></button>
-    <span id="quick"></span>
     <button class="tbtn" id="bDown" title="Travel to the stairs down (&gt;)" style="display:none"><b>⬇</b><small>Down</small></button>
     <button class="tbtn" id="bUp" title="Travel to the stairs up (&lt;)" style="display:none"><b>⬆</b><small>Up</small></button>
     <button class="tbtn" id="bView" title="Re-centre the view" style="display:none"><b>◎</b><small>Centre</small></button>
@@ -97,6 +97,7 @@
 <div id="manual" class="modal"><div><h2>Field manual</h2><div id="manualBody"></div><button id="manualClose">Close</button></div></div>
 <div id="stageChoice" class="modal"><div><h2 id="stageTitle"></h2><p>Choose what waits in the next stage. It applies to all five floors.</p><div id="stageBody"></div></div></div>
 <div id="altar" class="modal"><div><h2>The altar</h2><p id="altarText"></p><div id="altarList"></div><p id="altarOdds"></p><button id="altarGo" class="danger">Make the offering</button><button id="altarLeave">Leave</button></div></div>
+<div id="qpick" class="modal"><div><h2 id="qpTitle"></h2><p><small>Choose what this quickslot holds. Only usable or throwable items and abilities of attached grafts are listed.</small></p><div id="qpList"></div><button id="qpClear">Clear slot</button><button id="qpClose">Cancel</button></div></div>
 <div id="tip"></div>
 <div id="bargain" class="modal"><div><h2>A bargain with the dead</h2><p>Give up <b>half your max HP</b> for this whole run.</p><p>In return, one <b>random endgame graft</b> is stitched onto you before you start, and it <b>rots 75% slower</b> than anything else.</p><p><small>A harder, riskier way to play. You will not know which graft it is until you take the deal.</small></p><button id="bgYes" class="danger">Take the bargain</button><button id="bgNo">No bargain</button><button id="bgCancel">Back</button></div></div>
 <div id="over"><div><h2 id="ot"></h2><p id="ob"></p><button id="bRise">Rise Again</button><button id="bToMenu">Main menu</button><button id="oCopy">Copy run summary</button></div></div>

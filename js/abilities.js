@@ -4,8 +4,13 @@
 // Every ability plays its own effect (see drawFX in render.js): whips, floating eyes, tracers, lobbed acid, shockwaves...
 const adjacentEnemies=()=>{const p=G.p;return G.mons.filter(m=>!m.dead&&!m.ally&&Math.max(Math.abs(m.x-p.x),Math.abs(m.y-p.y))<=1)};
 const finish=m=>{if(m.hp<=0&&!m.dead)kill(m)};
+// single-target adjacent abilities hit the tapped enemy if one was chosen, else the first one next to you
+const pickAdj=a=>pickedTarget&&a.includes(pickedTarget)?pickedTarget:a[0];
 const needAdj=()=>{const a=adjacentEnemies();if(!a.length)msg('No enemy is adjacent.','warn');return a};
-function targetWithin(r){const p=G.p;let best=null,bd=99;
+function targetWithin(r){const p=G.p;
+ if(pickedTarget){const m=pickedTarget; // the player chose this target by tapping it
+  if(!m.dead&&!m.ally&&G.vis[m.y][m.x]&&cheb(m,p)<=r&&(r<=1||los(p.x,p.y,m.x,m.y)))return m;msg("That target is out of range.","warn");return null}
+ let best=null,bd=99;
  for(const m of G.mons){if(m.dead||m.ally||!G.vis[m.y][m.x])continue;const d=Math.max(Math.abs(m.x-p.x),Math.abs(m.y-p.y));if(d<=r&&d<bd&&los(p.x,p.y,m.x,m.y)){bd=d;best=m}}
  if(!best)msg('No target in range.','warn');return best}
 // ranged hit: deals damage, queues the matching projectile effect
@@ -19,7 +24,7 @@ const ABIL={
   G.shake=8;addFX('ring',{org:G.p,col:'#d8c090',r:64,debris:true,life:24});
   for(const m of a){m.hp-=2;m.stun=1;m.alert=true;G.floaters.push({x:m.x,y:m.y,t:'stun',c:'#fe6',l:25});blood(m.x,m.y,8);finish(m)}msg('The ground buckles under your fist.','good')}},
  a_saw:{n:'Butcher',cd:10,desc:'Triple-damage strike on one adjacent enemy. Costs 6 rot.',run:(e,k)=>{const a=needAdj();if(!a.length)return false;
-  const m=a[0];lunge(G.p,m.x,m.y);fxAt('slash',m,'#ffe0a0',22);const d=strike(m);m.hp-=d*2;G.floaters.push({x:m.x,y:m.y,t:'-'+d*3,c:'#fc6',l:30});wear(k,6);msg(`The bonesaw butchers the ${m.n} for ${d*3}.`,'good');finish(m)}},
+  const m=pickAdj(a);lunge(G.p,m.x,m.y);fxAt('slash',m,'#ffe0a0',22);const d=strike(m);m.hp-=d*2;G.floaters.push({x:m.x,y:m.y,t:'-'+d*3,c:'#fc6',l:30});wear(k,6);msg(`The bonesaw butchers the ${m.n} for ${d*3}.`,'good');finish(m)}},
  a_hook:{n:'Rend Open',cd:8,desc:'Every adjacent enemy bleeds for 5 turns.',run:()=>{const a=needAdj();if(!a.length)return false;
   for(const m of a){m.bleed=5;m.alert=true;fxAt('claws',m,'#e8e0c8',22);G.floaters.push({x:m.x,y:m.y,t:'bleed',c:'#c33',l:25});blood(m.x,m.y,6)}msg('The hook tears them open.','good')}},
  t_belly:{n:'Vent Gas',cd:12,desc:'Poison every adjacent enemy for 5 turns.',run:()=>{const a=needAdj();if(!a.length)return false;
@@ -37,13 +42,13 @@ Object.assign(ABIL,{
  a_bloatarm:{n:'Pop',cd:10,desc:'Burst the swollen arm over adjacent enemies: 3 damage and poison.',run:()=>{const a=needAdj();if(!a.length)return false;
   for(const m of a){m.hp-=3;m.poison=4;m.alert=true;fxAt('puff',m,'#9ad030',30,{atTarget:true,r:20});G.floaters.push({x:m.x,y:m.y,t:'-3',c:'#9c3',l:25});blood(m.x,m.y,8,'#9ad030',2);finish(m)}}},
  h_ghoul:{n:'Ravenous Bite',cd:12,desc:'Bite an adjacent enemy and heal for the damage dealt.',run:()=>{const a=needAdj();if(!a.length)return false;
-  const m=a[0];lunge(G.p,m.x,m.y);fxAt('bite',m,'#ece4cc',24);const d=strike(m);G.p.hp=Math.min(stat().hp,G.p.hp+d);G.floaters.push({x:G.p.x,y:G.p.y,t:'+'+d,c:'#8d6',l:25});msg(`You tear into the ${m.n} and feed (+${d}).`,'good');finish(m)}},
+  const m=pickAdj(a);lunge(G.p,m.x,m.y);fxAt('bite',m,'#ece4cc',24);const d=strike(m);G.p.hp=Math.min(stat().hp,G.p.hp+d);G.floaters.push({x:G.p.x,y:G.p.y,t:'+'+d,c:'#8d6',l:25});msg(`You tear into the ${m.n} and feed (+${d}).`,'good');finish(m)}},
  h_acolyte:{n:'Evil Eye',cd:14,desc:'Freeze the nearest enemy (range 5) for 2 turns.',run:()=>{const t=targetWithin(5);if(!t)return false;
   t.stun=2;t.alert=true;t.warning=null;fxAt('eye',t,'#c060ff',54);G.floaters.push({x:t.x,y:t.y,t:'stun',c:'#fe6',l:30})}},
  a_acolyte:{n:'Hex Bolt',cd:8,desc:'Bolt the nearest enemy (range 5): 3 damage and slow.',run:()=>{const t=targetWithin(5);if(!t)return false;
   shot(t,3,'#c9a0ff','bolt',18);t.slow=5;msg(`A hex bolt wracks the ${t.n}.`,'good');finish(t)}},
  a_warden:{n:'Shield Bash',cd:10,desc:'Smash one adjacent enemy: 3 damage and stun for 2 turns.',run:()=>{const a=needAdj();if(!a.length)return false;
-  const m=a[0];lunge(G.p,m.x,m.y);m.hp-=3;m.stun=2;m.alert=true;m.warning=null;G.shake=6;fxAt('impact',m,'#ffd070',18);fxAt('ring',m,'#ffd070',18,{atTarget:true,r:30});
+  const m=pickAdj(a);lunge(G.p,m.x,m.y);m.hp-=3;m.stun=2;m.alert=true;m.warning=null;G.shake=6;fxAt('impact',m,'#ffd070',18);fxAt('ring',m,'#ffd070',18,{atTarget:true,r:30});
   G.floaters.push({x:m.x,y:m.y,t:'-3',c:'#fc6',l:25},{x:m.x,y:m.y,t:'stun',c:'#fe6',l:30});blood(m.x,m.y,8);finish(m)}},
  t_matron:{n:'Afterbirth',cd:28,desc:'Heal 12 HP.',run:()=>{const p=G.p;p.hp=Math.min(stat().hp,p.hp+12);addFX('heal',{org:p,life:38});G.floaters.push({x:p.x,y:p.y,t:'+12',c:'#8d6',l:25});msg('The womb pulses and knits you back together. (+12 HP)','good')}},
  a_nyx:{n:'Lash',cd:6,desc:'Whip the nearest enemy within 3 tiles for 4-7 + attack, dragging it one tile closer.',run:()=>{const t=targetWithin(3);if(!t)return false;
@@ -58,19 +63,20 @@ Object.assign(ABIL,{
   const d=rnd(6,10)+stat().atk;shot(t,d,'#ffd070','bullet',14);G.shake=5;msg(`The rifle barks. The ${t.n} takes ${d}.`,'good');finish(t)}},
  t_sci:{n:'Stim',cd:25,desc:'Inject yourself: heal 6 HP and ease hunger by 10.',run:()=>{const p=G.p;p.hp=Math.min(stat().hp,p.hp+6);p.hunger=Math.max(0,p.hunger-10);addFX('heal',{org:p,life:30});G.floaters.push({x:p.x,y:p.y,t:'+6',c:'#8d6',l:25});msg('A cold rush floods your veins. (+6 HP)','good')}},
  a_sci:{n:'Inject',cd:10,desc:'Stab one adjacent enemy: 2 damage and a heavy poison (8 turns).',run:()=>{const a=needAdj();if(!a.length)return false;
-  const m=a[0];lunge(G.p,m.x,m.y);m.hp-=2;m.poison=8;m.alert=true;fxAt('impact',m,'#9ad030',20);G.floaters.push({x:m.x,y:m.y,t:'-2',c:'#9c3',l:25});msg(`The syringe empties into the ${m.n}.`,'good');finish(m)}},
+  const m=pickAdj(a);lunge(G.p,m.x,m.y);m.hp-=2;m.poison=8;m.alert=true;fxAt('impact',m,'#9ad030',20);G.floaters.push({x:m.x,y:m.y,t:'-2',c:'#9c3',l:25});msg(`The syringe empties into the ${m.n}.`,'good');finish(m)}},
  h_mask:{n:'Anesthetize',cd:18,desc:'Stun every adjacent enemy for 2 turns.',run:()=>{const a=needAdj();if(!a.length)return false;
   addFX('puff',{org:G.p,col:'#bcd8ff',r:36,life:34});for(const m of a){m.stun=2;m.alert=true;m.warning=null;G.floaters.push({x:m.x,y:m.y,t:'stun',c:'#fe6',l:30})}msg('A sweet gas puts them under.','good')}}});
 // ---- constructors for ability types (descriptions are generated from the numbers) ----
 const A={
  heal:(n,cd,amt,hunger)=>({n,cd,desc:`Heal ${amt} HP${hunger?` and ease hunger by ${hunger}`:''}.`,run:()=>{const p=G.p;p.hp=Math.min(stat().hp,p.hp+amt);if(hunger)p.hunger=Math.max(0,p.hunger-hunger);addFX('heal',{org:p,life:32});G.floaters.push({x:p.x,y:p.y,t:'+'+amt,c:'#8d6',l:25});msg(`You mend yourself. (+${amt} HP)`,'good')}}),
  line:(n,cd,len,base)=>({n,cd,desc:`Lash a ${len}-tile line toward the nearest enemy: ${base}-${base+2} + attack to everything in it.`,run:()=>{
-  const t=targetWithin(len);if(!t)return false;const p=G.p,dx=Math.sign(t.x-p.x),dy=Math.sign(t.y-p.y),hit=[];
-  for(let i=1;i<=len;i++){const x=p.x+dx*i,y=p.y+dy*i;if(!walk(x,y))break;const m=monAt(x,y);if(m&&!m.ally)hit.push(m)}
+  const t=targetWithin(len);if(!t)return false;const p=G.p,ex=t.x-p.x,ey=t.y-p.y,far=Math.max(Math.abs(ex),Math.abs(ey)),hit=[];
+  // the line runs through the target (not just along the nearest of 8 directions, which missed targets at knight's-move offsets)
+  for(let i=1;i<=len;i++){const x=p.x+Math.round(ex/far*i),y=p.y+Math.round(ey/far*i);if(!walk(x,y))break;const m=monAt(x,y);if(m&&!m.ally&&!hit.includes(m))hit.push(m)}
   hit.forEach((m,i)=>{const d=rnd(base,base+2)+stat().atk;m.hp-=d;m.alert=true;fxAt('whip',m,'#e0a0ff',30,{delay:i*3});G.floaters.push({x:m.x,y:m.y,t:'-'+d,c:'#fc6',l:25});blood(m.x,m.y,6)});
   msg(`A tendril sweeps ${hit.length} enem${hit.length===1?'y':'ies'}.`,'good');for(const m of hit)finish(m)}}),
  root:(n,cd,dur,drain)=>({n,cd,desc:`Latch onto an adjacent enemy: it cannot move for ${dur-1} turns${drain?` and you drain ${drain} HP from it`:''}.`,run:()=>{
-  const a=needAdj();if(!a.length)return false;const m=a[0];lunge(G.p,m.x,m.y);m.root=dur;m.alert=true;fxAt('bite',m,'#c070c0',24);
+  const a=needAdj();if(!a.length)return false;const m=pickAdj(a);lunge(G.p,m.x,m.y);m.root=dur;m.alert=true;fxAt('bite',m,'#c070c0',24);
   if(drain){m.hp-=drain;G.p.hp=Math.min(stat().hp,G.p.hp+drain);G.floaters.push({x:m.x,y:m.y,t:'-'+drain,c:'#c9f',l:25},{x:G.p.x,y:G.p.y,t:'+'+drain,c:'#8d6',l:25})}
   G.floaters.push({x:m.x,y:m.y,t:'root',c:'#fb4',l:28});msg(`You latch onto the ${m.n}.`,'good');finish(m)}}),
  alert:(n,cd,r)=>({n,cd,desc:`Wake every enemy within ${r} tiles and draw them to you.`,run:()=>{
@@ -105,8 +111,12 @@ function useAbility(k){
  if(paused||G.over)return;const p=G.p,e=p.eq[k];if(!e)return;const ab=ABIL[e.id];if(!ab)return;
  if(e.cd>0){msg(`${ab.n} is recharging (${e.cd} turns).`,'warn');return}
  stopTravel();
+ if(ab.tgt&&!pickedTarget&&aimBegin(()=>useAbility(k),ab.tgt))return; // choose a target first
  const r=ab.run(e,k);if(r===false)return;
  if(e.id!=='h_wailer')G.p.cloak=0; // acting ends 'Play Dead'
  if(r!=='spent')e.cd=ab.cd+1; // +1: endTurn below ticks cooldowns once immediately
  sfx('use');selItem=null;closePack();if(G.over)return;endTurn(false,false)}
 computePower(); // abilities are known now: score every graft for its hidden tier
+// abilities that aim at one enemy: tap the ability, then tap who to hit (a lone candidate is used automatically)
+Object.assign(ABIL.h_bloat,{tgt:5});Object.assign(ABIL.h_acolyte,{tgt:5});Object.assign(ABIL.a_acolyte,{tgt:5});Object.assign(ABIL.a_nyx,{tgt:3});Object.assign(ABIL.a_rifle,{tgt:6});Object.assign(ABIL.a_matron,{tgt:3});
+for(const id of ['a_saw','h_ghoul','a_warden','a_sci','h_leech'])Object.assign(ABIL[id],{tgt:1});

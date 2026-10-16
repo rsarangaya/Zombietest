@@ -7,12 +7,12 @@ const TRANSIENT=new Set(['q','tw','lg','fl','rx','ry','vel','moving','startAt','
 // 2D grids are stored as compact strings
 const pack2d=(a,f)=>a.map(r=>r.map(f).join('')).join('|');
 const unpack2d=(s,f)=>s.split('|').map(r=>[...r].map(f));
-const PACK={map:v=>v,vis:v=>v?1:0,seen:v=>v?1:0,decor:v=>v};
+const PACK={map:v=>v.toString(36),vis:v=>v?1:0,seen:v=>v?1:0,decor:v=>v}; // tile codes reach 10 (altar), so one base-36 character each
 function packLevel(o){const out={};
  for(const k of LVLKEYS){if(k==='shade')continue;out[k]=PACK[k]?pack2d(o[k],PACK[k]):o[k]}return out}
 function unpackLevel(o){const out={};
- for(const k of LVLKEYS){if(k==='shade'){out[k]=Array.from({length:H},()=>new Array(W).fill(0));continue}
-  out[k]=k==='map'||k==='decor'?unpack2d(o[k],c=>+c):k==='vis'||k==='seen'?unpack2d(o[k],c=>c==='1'):o[k]}
+ for(const k of LVLKEYS){if(k==='shade'){out[k]=Array.from({length:H},()=>Array.from({length:W},()=>Math.random()));continue} // cosmetic only: not saved, so re-rolled
+  out[k]=k==='map'?unpack2d(o[k],c=>parseInt(c,36)):k==='decor'?unpack2d(o[k],c=>+c):k==='vis'||k==='seen'?unpack2d(o[k],c=>c==='1'):o[k]}
  return out}
 function idleState(){curSlot=0;G={over:false,p:null,map:null,mons:[],items:[],floaters:[],parts:[],attackFX:[],dying:[],log:[],shake:0,cx:0,cy:0,levels:{}}}
 const inRun=()=>!!(G&&G.p&&G.map&&curSlot);
@@ -24,7 +24,7 @@ function saveRun(){
  G._lc=G._lc||{};const lv={};
  for(const d in G.levels){if(+d===G.depth)continue;lv[d]=G._lc[d]||(G._lc[d]=packLevel(G.levels[d]))} // visited floors are packed once and reused
  const core={seed:G.seed,mods:G.mods,depth:G.depth,turn:G.turn,ward:G.ward,rites:G.rites,dropCounts:G.dropCounts,p:G.p,log:G.log.slice(0,60),
-  kindBag:G.kindBag,ft:G.ft,reek:G.reek,debugUsed:G.debugUsed,dev:G.dev,god:G.god,newEntries:G.newEntries,ended:G.ended};
+  kindBag:G.kindBag,stageTurns:G.stageTurns,reekState:G.reekState,reekHp:G.reekHp,debugUsed:G.debugUsed,dev:G.dev,god:G.god,newEntries:G.newEntries,ended:G.ended};
  const sum={bargain:!!G.p.bargain,depth:G.depth,lvl:G.p.lvl,hp:G.p.hp,max:stat().hp,turn:G.turn,kills:G.p.kills,seed:G.seed,saved:Date.now()};
  try{localStorage.setItem(runKey(curSlot),JSON.stringify({v:1,rng:rngState,mid:MID,core,cur:packLevel(cur),lv},(k,v)=>TRANSIENT.has(k)?undefined:v));
   localStorage.setItem(sumKey(curSlot),JSON.stringify(sum))}catch(e){/* storage full or blocked: the run simply cannot be resumed later */}}
@@ -51,7 +51,7 @@ function continueRun(slot){
  const cur=unpackLevel(d.cur);for(const k of LVLKEYS)G[k]=cur[k];
  G.regIdx=Math.min(STAGES-1,Math.floor((G.depth-1)/STAGE_LEN));G.reg=REG[G.regIdx];G.taintK=(MODS[(G.mods&&G.mods[G.regIdx])||'standard']||MODS.standard).taint;
  for(const o of [G.p,...G.mons]){o.rx=o.x;o.ry=o.y;o.q=[]}
- selItem=null;pan.x=pan.y=0;panGoal=null;stopTravel();
+ selItem=null;pan.x=pan.y=0;panGoal=null;stopTravel();cancelAim();
  computeFOV();G.cx=G.p.x+.5;G.cy=G.p.y+.5;
  msg('You return to the run.','info');ui();hideMenuForRun();return true}
 function hideMenuForRun(){paused=false;document.getElementById('menu').style.display='none';hintOnce('start');const sd=document.getElementById('seedShow');if(sd&&G.seed!=null)sd.textContent=G.seed}

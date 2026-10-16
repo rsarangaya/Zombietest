@@ -5,7 +5,9 @@ const closeTopWindow=()=>{ // Esc: close the top-most window; with none open, op
  if($('console').style.display==='flex')return closeConsole();
  if($('stageChoice').style.display==='flex')return; // must choose
  if($('bargain').style.display==='flex'){$('bargain').style.display='none';return}
+ if(aim){cancelAim();return}
  if(altarOpen()){closeAltar();return}
+ if(qpOpen()){closeQuickPicker();return}
  if($('codex').style.display==='flex'){$('codex').style.display='none';return}
  if($('manual').style.display==='flex'){$('manual').style.display='none';return}
  if($('logModal').style.display==='flex'){$('logModal').style.display='none';return}
@@ -14,7 +16,7 @@ const closeTopWindow=()=>{ // Esc: close the top-most window; with none open, op
  if($('exitScreen').style.display==='flex'){$('exitScreen').style.display='none';openMenu();return}
  if($('menu').style.display==='flex'){if($('menuRuns').style.display!=='none'){showMenuRuns(false);return}if(inRun()&&!G.over)resumeRun();return} // Esc on the menu goes back to the game
  openMenu()};
-const anyWindowOpen=()=>packIsOpen()||$('codex').style.display==='flex'||$('manual').style.display==='flex'||$('stageChoice').style.display==='flex'||$('bargain').style.display==='flex'||altarOpen()||$('logModal').style.display==='flex'||$('console').style.display==='flex'||$('menu').style.display==='flex';
+const anyWindowOpen=()=>packIsOpen()||$('codex').style.display==='flex'||$('manual').style.display==='flex'||$('stageChoice').style.display==='flex'||$('bargain').style.display==='flex'||altarOpen()||qpOpen()||$('logModal').style.display==='flex'||$('console').style.display==='flex'||$('menu').style.display==='flex';
 addEventListener('keydown',e=>{
  if(!e.key||e.ctrlKey||e.metaKey||e.altKey)return;
  if(e.key==='`'){e.preventDefault();con.modal.style.display==='flex'?closeConsole():openConsole();return}
@@ -80,6 +82,7 @@ cv.addEventListener('pointermove',e=>{if(mmDrag===e.pointerId){mmJump(e);return}
  a.x=e.clientX;a.y=e.clientY});
 cv.addEventListener('pointerup',e=>{if(mmDrag===e.pointerId){mmDrag=null;return}clearTimeout(longTimer);const a=pointers.get(e.pointerId);pointers.delete(e.pointerId);
  if(a&&!pinched&&!dragging&&!longFired&&!paused&&!G.over&&e.button!==2){const {x,y}=screenTile(e.clientX,e.clientY),p=G.p;stopTravel();
+  if(aim){const m=aim.cands.find(m=>m.x===x&&m.y===y&&!m.dead);if(m)fireAim(m);else cancelAim();if(!pointers.size){pinched=false;pinchDist=0;dragging=false;cv.classList.remove('drag')}return}
   if(selItem&&selItem.mon)selItem=null; // tapping elsewhere dismisses the inspect card
   const adj=Math.max(Math.abs(x-p.x),Math.abs(y-p.y))===1;
   if(adj)playerAct(x-p.x,y-p.y);
@@ -104,6 +107,7 @@ $('pack').addEventListener('pointerdown',e=>{if(e.target===$('pack'))closePack()
 $('bLog').onclick=openLog;
 $('logClose').onclick=()=>{$('logModal').style.display='none'};
 $('mClose').onclick=resumeRun;
+$('qpClear').onclick=()=>{ensureQuick(G.p)[qpSlot]=null;closeQuickPicker();ui()};$('qpClose').onclick=closeQuickPicker;
 $('altarGo').onclick=makeOffering;$('altarLeave').onclick=closeAltar;
 $('mContinue').onclick=()=>showMenuRuns(true);$('mRunsBack').onclick=()=>showMenuRuns(false);
 $('mNewGame').onclick=newGameClick;$('mExit').onclick=exitGame;$('exitBack').onclick=()=>{$('exitScreen').style.display='none';openMenu()};

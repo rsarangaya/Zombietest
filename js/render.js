@@ -178,6 +178,10 @@ function drawFX(f,wx,wy){
    if(m.bleed>0||m.poison>0||m.stun>0||m.burn>0||m.slow>0||m.root>0){ctx.fillStyle=m.stun>0?'#fe6':m.root>0?'#fb4':m.burn>0?'#f93':m.poison>0?'#9c3':m.slow>0?'#8ab':'#c33';ctx.fillRect(px+2,py+4,4,4)}
    if(!m.alert&&!m.ally){ctx.fillStyle='#fff';ctx.font='bold 10px monospace';ctx.textAlign='left';ctx.fillText('z',px+T-9,py+8+Math.sin(tick/12)*2)}}
   ctx.globalAlpha=1}
+ // while aiming: pulsing crosshair rings on every enemy you can pick
+ if(aim)for(const m of aim.cands){if(m.dead)continue;const px=wx(m.rx!==undefined?m.rx:m.x)+16,py=wy(m.ry!==undefined?m.ry:m.y)+16,pu=.6+.4*Math.sin(tick/5),r=17+2*Math.sin(tick/5);
+  ctx.strokeStyle='rgba(255,90,70,'+(.5+.5*pu)+')';ctx.lineWidth=2;ctx.beginPath();ctx.arc(px,py,r,0,6.283);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(px-r-4,py);ctx.lineTo(px-r+5,py);ctx.moveTo(px+r-5,py);ctx.lineTo(px+r+4,py);ctx.moveTo(px,py-r-4);ctx.lineTo(px,py-r+5);ctx.moveTo(px,py+r-5);ctx.lineTo(px,py+r+4);ctx.stroke()}
  // attack and ability effects draw over the sprites
  for(const f of G.attackFX){if(f.delay>0)continue;ctx.save();drawFX(f,wx,wy);ctx.restore()}
  for(const q of G.parts){ctx.fillStyle=q.c;ctx.globalAlpha=Math.min(1,q.l/10);ctx.fillRect(Math.round(q.x-cxp),Math.round(q.y-cyp),q.s,q.s)}ctx.globalAlpha=1;

@@ -33,6 +33,12 @@ button:disabled{opacity:.45;cursor:default}
 #log{width:min(560px,100%);min-height:0;margin-bottom:6px;font-size:12px;text-shadow:1px 1px 2px #000,0 0 5px #000;overflow:hidden}
 #log div{padding:1px 4px;background:linear-gradient(90deg,rgba(0,0,0,.5),rgba(0,0,0,0));transition:opacity .5s}
 .bad{color:#e55}.good{color:#8d6}.warn{color:#e90}.info{color:#8ac}
+#quickbar{display:flex;gap:4px;justify-content:center;margin-bottom:5px;pointer-events:none}
+.qbtn{pointer-events:auto;position:relative;width:46px;height:46px;min-height:0;padding:0;margin:0;display:flex;align-items:center;justify-content:center;background:rgba(20,12,10,.86);border:1px solid #6a3a30;line-height:1;touch-action:manipulation}
+.qbtn canvas{width:30px;height:30px;image-rendering:pixelated}.qbtn .qk{position:absolute;left:2px;top:1px;font-size:9px;font-style:normal;color:#a89a80;text-shadow:1px 1px #000}
+.qbtn .plus{font-size:20px;color:#5a4a3a}.qbtn.empty{border-style:dashed;background:rgba(20,12,10,.55)}.qbtn.off{opacity:.45}.qbtn.ready{border-color:#d8b040;box-shadow:0 0 6px #d8b04088}
+.qbtn .cnt{position:absolute;right:3px;bottom:2px;font-size:10px;color:#fc6;text-shadow:1px 1px #000}.qbtn .cd{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.62);font-size:15px;color:#fff}
+#qpList{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px;max-height:44vh;overflow:auto;margin:6px 0}
 #toolbar{display:flex;flex-wrap:wrap;justify-content:center;gap:5px;max-width:640px;pointer-events:none}
 #quick{display:contents}
 .tbtn{pointer-events:auto;position:relative;width:54px;height:54px;min-height:0;padding:2px 0 0;margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(20,12,10,.86);border:1px solid #6a3a30;line-height:1}

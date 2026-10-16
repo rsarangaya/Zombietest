@@ -22,11 +22,12 @@ function resumeRun(){if(!inRun()||G.over)return;hideMenuForRun()}
 function parseSeed(v){v=String(v||'').trim();if(!v)return null;if(/^\d+$/.test(v))return(+v)>>>0;let h=2166136261;for(const ch of v){h^=ch.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
 function newGame(seedArg){
  const seedEl=document.getElementById('seedIn'),seed=seedArg!=null?seedArg>>>0:(seedEl&&parseSeed(seedEl.value))??(Math.random()*4294967296>>>0);
- seedRng(seed);stopRest();
+ seedRng(seed);stopRest();cancelAim();
  document.getElementById('over').style.display='none';
  G={seed,mods:{0:'standard'},depth:0,turn:0,levels:{},ward:{},rites:false,dropCounts:{},p:{x:0,y:0,hp:20,lvl:1,xp:0,hunger:10,bonusHp:0,candle:0,rest:0,eq:{head:null,torso:null,armL:mkStarter('armL'),armR:mkStarter('armR'),legs:mkStarter('legs')},inv:[mkCons('flask'),mkCons('scrap')],kills:0,face:1},log:[],floaters:[],parts:[],attackFX:[],dying:[],shake:0,over:false,cx:0,cy:0};
  startPerkSetup(G.p);
  if(pendingBargain){applyBargain(G.p)}pendingBargain=false;
+ ensureQuick(G.p);for(const k of SLOTS)if(G.p.eq[k])autoQuick(G.p.eq[k]); // grafts that arrive with an ability (bargain, perk) get their quickslot
  paused=false;document.getElementById('menu').style.display='none';selItem=null;pan.x=pan.y=0;stopTravel();changeLevel(1,true);
  G.cx=G.p.x+.5;G.cy=G.p.y+.5;
  msg('You claw out of a shallow grave. You are so hungry.','warn');if(G.p.bargain)msg(`The dead take half of you. In return: ${G.p.bargainName}, which barely rots.`,'bad');msg(`Seed ${G.seed}`,'info');

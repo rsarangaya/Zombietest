@@ -131,12 +131,15 @@ function spawn(k,pos,extra){const t=MON[k],hp=t.hp+Math.floor(G.depth/3);
  const grp=G.rooms?G.rooms.findIndex(r=>pos.x>=r.x&&pos.x<r.x+r.w&&pos.y>=r.y&&pos.y<r.y+r.h):-1;
  const m={...t,k,id:MID++,grp,x:pos.x,y:pos.y,rx:pos.x,ry:pos.y,q:[],hp,max:hp,en:0,alert:false,fx:1,bleed:0,poison:0,stun:0,...(extra||{})};G.mons.push(m);return m}
 function changeLevel(dir,force){
- const p=G.p;
+ const p=G.p,oldReg=G.regIdx;
  // leaving a stage's boss floor for a new stage: pick the next stage's variant first
  if(!force&&dir>0&&G.depth>0&&G.depth<MAX_DEPTH&&G.depth%STAGE_LEN===0&&!(G.mods&&G.mods[G.depth/STAGE_LEN])&&!G.levels[G.depth+1]){stopTravel();openStageChoice();return}
  if(G.depth>0)sfx('stairs');
+ // an active Reek follows you instead of waiting behind: it leaves this floor (keeping its wounds) and turns up on the next
+ if(G.reekState&&G.reekState[G.regIdx]==='active'){const s=G.mons.find(m=>m.k==='stalker');if(s){G.reekHp=s.hp;G.mons=G.mons.filter(m=>m!==s)}}
  if(G.depth>0){const o={};LVLKEYS.forEach(k=>o[k]=G[k]);G.levels[G.depth]=o;if(G._lc)delete G._lc[G.depth]}
  G.depth+=dir;const d=G.depth;G.regIdx=Math.min(STAGES-1,Math.floor((d-1)/STAGE_LEN));G.reg=REG[G.regIdx];
+ if(G.regIdx!==oldReg)G.reekHp=0; // a wounded Reek from the previous stage must not carry its HP into the next stage's Reek
  const existing=G.levels[d];
  G.taintK=(MODS[(G.mods&&G.mods[G.regIdx])||'standard']||MODS.standard).taint;
  if(existing){LVLKEYS.forEach(k=>G[k]=existing[k]);if(G._lc)delete G._lc[d]}else genLevel(d);
@@ -144,6 +147,7 @@ function changeLevel(dir,force){
  for(let r=1;r<W&&!best;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){const x=st.x+dx,y=st.y+dy;if(!best&&walk(x,y)&&G.map[y][x]!==2&&!monAt(x,y)&&!(x===G.sU.x&&y===G.sU.y)&&!(x===G.sD.x&&y===G.sD.y))best={x,y}}
  snapPos(p,best.x,best.y);panGoal=null;G.mons.forEach(m=>snapPos(m,m.x,m.y));
  pan.x=pan.y=0;G.sbx=null;G.dying=[];G.fogA=null;G.cx=p.x+.5;G.cy=p.y+.5;computeFOV();
+ if(G.reekState&&G.reekState[G.regIdx]==='active'&&d<bossFloor(G.regIdx)&&!G.mons.some(m=>m.k==='stalker')&&summonReek())msg('The Reek has followed you down.','bad');
  if(G.turn>0||d>1)msg(dir>0?`You descend into ${G.reg.n}. Depth ${d}.`:`You climb back to depth ${d}.`,'info');
  if(!existing&&(d-1)%STAGE_LEN===0){const st=G.regIdx+1;showHint(`STAGE ${st}: ${G.reg.n.toUpperCase()}`+(st===STAGES?' - the survivors are human, and armed.':''));if(d>1)msg('You arrive in a waste room. The dead dump their leavings here: take what you need.','info');else msg('Something has been dumped in this waste room. Take what you can.','info')}}
 const monAt=(x,y)=>G.mons.find(m=>m.x===x&&m.y===y);
