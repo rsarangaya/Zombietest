@@ -34,7 +34,12 @@ S.matron=build(SPR.bloat,{a:'#a05a7a',e:'#301000',n:'#a05a7a'});
 S.abomination=build(SPR.golem,{a:'#5a3a7a',e:'#ff60ff'});
 // ---------- body-region sprites ----------
 const SKIN='#8aa27a';
-const HEAD={ // 8 wide x 7
+const HEAD={ghoul:["..aaaa..",".aaaaaa.",".aeaaea.",".aaaaaa.",".awkkwa.",".awkkwa.","..aaaa.."],
+acolyte:["..kkkk..",".kkkkkk.","kkaeeakk","kkaaaakk",".kkaakk.","..kkkk..","...kk..."],
+guard:[".mmmmmm.","mmmmmmmm","mmmmmmmm",".aeaaea.",".aaaaaa.","..aaaa..","...aa..."],
+scientist:["..hhhh..",".hhhhhh.",".aaaaaa.","qqeaaeqq",".aaaaaa.","..aaaa..","...aa..."],
+abom:["a.aaaa.a","aaaaaaaa","aeaaaaea","aaaaaaaa","aeaaaaea","aaakkaaa",".aaaaaa."],
+ // 8 wide x 7
 def:["..aaaa..",".aaaaaa.",".aeaaea.",".aaaaaa.",".awwwwa.","..aaaa..","...aa..."],
 crow:["..aaaa..",".aaccaa.",".aeaaea.",".aaaaaa.","..ayya..","...yy...","....y..."],
 nest:["..aaaa..",".aawaaa.",".akaakaw",".aaaaaa.",".awaaka.","..aaaa..","...aa..."],
@@ -42,14 +47,21 @@ zeal:["..aaaa..",".aaaaaa.",".akkkka.",".kekkek.",".akwwka.","..aaaa..","...aa..
 bloat:[".aaaaaa.","aaacaaaa","aeaaaaea","aaagaaaa","aagggaaa",".aaaaaa.","..bbbb.."],
 golem:[".aaaaaa.","aaaaaaaa","bbbbbbbb","aeaaaaea","aaakkaaa","akakakaa",".aaaaaa."],
 mask:[".aaaaaa.","kkkkkkkk","aggaagga","aaaaaaaa",".abbbba.","..aaaa..","...aa..."]};
-const TORSO={ // 8 wide x 5
+const TORSO={vest:["aaaaaaaa","abaaaaba","aaaaaaaa","akkkkkka","aaaaaaaa"],
+labcoat:["aaaaaaaa","awaaaawa","aaaaaaaa","aaaabaaa","aab..baa"],
+mass:["agaagaag","gaaaggaa","aagaaaga","gaagaaag","aaaaaaaa"],
+ // 8 wide x 5
 def:["dddddddd","dddfddrd","dddddddd","ddfddddd","dd.dd.dd"],
 maggot:["aaaaaaaa","akaawaak","aaaaaaaa","aawaakaa","aaaaaaaa"],
 cloak:["cacacaca","aaaaaaaa","acacacac","aaaaaaaa","caca.aca"],
 rib:["aaaaaaaa","awwaawwa","aawwwwaa","awwaawwa","aaaaaaaa"],
 belly:["aaaaaaaa","aacaaaga","aaaagaaa","agaaacaa","aaaaaaaa"],
 slab:["aaaaaaaa","akaaaaka","aaaaaaaa","bbbbbbbb","aakaakaa"]};
-const ARM={ // 4 wide x 8 (right arm; left is mirrored)
+const ARM={gun:["..mm","..mm","..mm",".aam",".aam",".aa.",".aa.","aaa."],
+baton:["..kk","..kk","..kk",".aak",".aa.",".aa.",".aa.","aaa."],
+syringe:["..qq","..qq","..m.",".aam",".aa.",".aa.",".aa.","aaa."],
+tentacle:["aa..",".aa.","..aa",".aa.","aa..",".aa.","..aa","..a."],
+ // 4 wide x 8 (right arm; left is mirrored)
 def:[".aa.",".aa.",".aaa",".aaa",".aa.",".aa.",".aa.","aaaa"],
 crow:["aaa.","acaa","aaaa","caaa",".aaa",".aa.",".yy.","y..y"],
 hook:[".aa.",".aa.",".aa.",".bbb","..mm","..m.","mmm.","m..."],
@@ -57,7 +69,9 @@ scythe:["mmm.","..mm","..wm","..w.","..w.","..w.",".aa.",".aa."],
 fist:[".aa.",".aa.",".aa.",".aa.","aaaa","awaw","aaaa",".kk."],
 gfist:["aaaa","aaaa","abba","aaaa","aaaa","abba","aaaa",".aa."],
 saw:[".aa.",".aa.",".aab","..mm",".mkm",".mmm",".mkm","..mm"]};
-const LEGS={ // 8 wide x 4
+const LEGS={lope:[".aa..aa.",".aa..aa.","aa....aa","aaa..aaa"],
+boots:[".aa..aa.",".aa..aa.",".aa..aa.","kkk..kkk"],
+ // 8 wide x 4
 def:[".aa..aa.",".aa..aa.",".aa..aa.","aaa..aaa"],
 crawl:["..aaaa..","aaawaaaa","awaaawaa","aaaaaaaa"],
 crow:[".y....y.",".y....y.",".y....y.","yyy..yyy"],

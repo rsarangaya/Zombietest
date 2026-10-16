@@ -27,8 +27,45 @@ function ui(){
  here.forEach(e=>{const d=document.createElement('div');d.className='inv'+(selItem&&selItem.ground===e?' sel':'');d.appendChild(cloneCanvas(itIcon(e.it)));d.title=e.it.name;
   if(e.it.count>1)d.insertAdjacentHTML('beforeend',`<b>${e.it.count}</b>`);
   d.onclick=()=>{selItem={ground:e,it:e.it};ui()};gv.appendChild(d)});
- detail()}
-function describeMon(m){
+ document.getElementById('packH').textContent=`BACKPACK (${p.inv.length}/${MAXINV})`;
+ detail();renderQuick();renderInspect()}
+// ---------- HUD: backpack window, action bar, quick buttons, inspect card ----------
+const packEl=()=>document.getElementById('pack');
+const packIsOpen=()=>packEl().style.display==='flex';
+function openPack(){if(G.over)return;stopTravel();if(selItem&&selItem.mon)selItem=null;packEl().style.display='flex';ui()}
+function closePack(){packEl().style.display='none'}
+function compareLine(it){ // how a graft in the pack/on the ground stacks up against what's attached to its slot
+ if(it.type!=='part')return '';const p=G.p;let slot=it.kind;
+ if(it.kind==='arm')slot=!p.eq.armL?'armL':!p.eq.armR?'armR':(p.eq.armL.dur<=p.eq.armR.dur?'armL':'armR');
+ const cur=p.eq[slot],d=[];
+ for(const k of ['atk','def','hp','sight','steal','spd']){const a=it.stats[k]||0,b=cur?(cur.stats[k]||0):0;if(a!==b){const v=k==='spd'?Math.round((a-b)*100)+'%':a-b;d.push(`<span class="${a>b?'good':'bad'}">${k.toUpperCase()} ${a>b?'+':''}${v}</span>`)}}
+ return `<br><small>${cur?'vs '+cur.name:'Slot empty'}: ${d.join(', ')||'no stat change'}</small>`}
+// consumables worth a one-tap button, in priority order
+const QUICK_ORDER=['flask','scrap','meat','shards','pyre','grease','jar','brine','candle','serum'];
+let hudActions=[]; // {run, label} for Shift+1..9
+function quickBtn(html,title,cls,onclick){const b=document.createElement('button');b.className='tbtn '+cls;b.innerHTML=html;b.title=title;b.onclick=onclick;return b}
+function renderQuick(){
+ const q=document.getElementById('quick'),p=G.p;q.innerHTML='';hudActions=[];
+ // 1) ready/recharging active abilities of attached grafts
+ for(const k of SLOTS){const e=p.eq[k],ab=e&&ABIL[e.id];if(!ab)continue;
+  const b=quickBtn('',`${ab.n}: ${ab.desc}`,e.cd>0?'':'ready',()=>useAbility(k));
+  b.appendChild(cloneCanvas(itIcon(e)));b.insertAdjacentHTML('beforeend',`<small>${ab.n}</small>`);if(e.cd>0)b.insertAdjacentHTML('beforeend',`<span class="cd">${e.cd}</span>`);
+  q.appendChild(b);hudActions.push(()=>useAbility(k))}
+ // 2) up to three consumables
+ let n=0;for(const id of QUICK_ORDER){if(n>=3)break;const it=p.inv.find(i=>i.id===id);if(!it)continue;n++;
+  const act=()=>{if(paused||G.over)return;selItem={idx:p.inv.indexOf(it),it};useCons()};
+  const b=quickBtn('',`${CONS[id].n}: ${CONS[id].desc}`,'',act);b.appendChild(cloneCanvas(itIcon(it)));
+  b.insertAdjacentHTML('beforeend',`<small>${CONS[id].throw?'Throw':'Use'}</small>${it.count>1?`<span class="cnt">${it.count}</span>`:''}`);q.appendChild(b);hudActions.push(act)}
+ // contextual buttons
+ const here=G.items.filter(i=>i.x===p.x&&i.y===p.y),bg=document.getElementById('bGround');
+ bg.style.display=here.length?'':'none';bg.querySelector('small').textContent=here.length>1?`Ground ${here.length}`:'Ground';
+ const seen=s=>s.x>=0&&G.seen[s.y]&&G.seen[s.y][s.x];
+ document.getElementById('bDown').style.display=seen(G.sD)?'':'none';
+ document.getElementById('bUp').style.display=seen(G.sU)&&G.depth>1?'':'none'}
+function renderInspect(){
+ const el=document.getElementById('inspect');
+ if(selItem&&selItem.mon&&!packIsOpen()){el.innerHTML=`<button class="x" onclick="selItem=null;ui()">✕</button>`+describeMon(selItem.mon);el.style.display='block'}
+ else el.style.display='none'}function describeMon(m){
  const bonus=Math.floor(G.depth/4),tr=[];
  if(m.rng)tr.push(`ranged hex (range ${m.rng})`);if(m.burst)tr.push('bursts in acid when killed');if(m.erratic)tr.push('flits erratically');
  if(m.spd>1)tr.push('fast');else if(m.spd<1)tr.push('slow');if(m.mini||m.k==='boss')tr.push(m.k==='boss'?'final boss':'mini-boss');
@@ -38,8 +75,7 @@ function pickUp(){const s=selItem;if(!s||!s.ground||paused||G.over)return;const 
  if(!addInv(e.it)){msg('Backpack full.','warn');return}
  G.items.splice(i,1);msg(`You grab: ${e.it.name}${e.it.count>1?' x'+e.it.count:''}.`,'good');sfx('pickup');selItem=null;ui()}
 function detail(){const el=document.getElementById('detail');
- if(selItem&&selItem.mon){el.innerHTML=describeMon(selItem.mon);return}
- if(!selItem||!selItem.it){el.innerHTML='Tap an item to inspect it. Tap a distant monster (or right-click / long-press) to inspect it.';return}
+ if(!selItem||!selItem.it){el.innerHTML='Tap an item to inspect it.';return}
  const it=selItem.it;let b='';
  if(selItem.ground)b=`<button onclick="pickUp()">Pick up</button>`;
  else if(selItem.eq){const ab=ABIL[it.id];
@@ -47,7 +83,7 @@ function detail(){const el=document.getElementById('detail');
    +(ab?`<button onclick="useAbility('${selItem.eq}')"${it.cd>0?' disabled':''}>${ab.n}${it.cd>0?' ('+it.cd+')':''}</button>`:'')}
  else if(it.type==='cons'){if(it.id!=='rites')b+=`<button onclick="useCons()">${CONS[it.id].throw?'Throw':'Use'}</button>`;b+=`<button onclick="dropIt()">Drop</button>`}
  else b=`<button onclick="equip()">Attach</button><button onclick="devour()">Devour</button><button onclick="dropIt()">Drop</button>`;
- el.innerHTML=describe(it)+'<br>'+b}
+ el.innerHTML=describe(it)+(selItem.eq?'':compareLine(it))+'<br>'+b}
 function equip(){if(paused||G.over)return;const p=G.p,it=selItem.it;if(it.dur<=0){msg('This graft has decomposed.','warn');return}let slot=it.kind;
  if(it.kind==='arm')slot=!p.eq.armL?'armL':!p.eq.armR?'armR':(p.eq.armL.dur<=p.eq.armR.dur?'armL':'armR');
  p.inv.splice(selItem.idx,1);const old=p.eq[slot];p.eq[slot]=it;it.slot=slot;
@@ -69,7 +105,7 @@ function useCons(){if(paused||G.over)return;stopTravel();
  const it=selItem.it,p=G.p,s=stat(),id=it.id;
  if(CONS[id].throw){const t=nearestTarget();if(!t){msg('No target in range.','warn');return}
   consume(it);sfx('throw');
-  G.attackFX.push({x:p.x,y:p.y,tx:t.x,ty:t.y,life:12,max:12,ranged:true,player:true});
+  addFX('lob',{org:p,tgt:t,col:id==='shards'?'#ddd8c0':id==='pyre'?'#f93':id==='grease'?'#6a6a98':'#9ad030',life:20,big:id!=='shards',splash:id==='shards'?4:14});
   if(id==='shards'){const d=rnd(2,4);t.hp-=d;t.alert=true;G.floaters.push({x:t.x,y:t.y,t:'-'+d,c:'#fc6',l:25});blood(t.x,t.y,6);msg(`A bone shard hits the ${t.n} for ${d}.`);if(t.hp<=0)kill(t)}
   else if(id==='pyre'){msg(`The Pyre Flask bursts over the ${t.n}!`,'warn');t.hp-=3;t.burn=4;t.alert=true;G.floaters.push({x:t.x,y:t.y,t:'-3',c:'#f93',l:25});blood(t.x,t.y,10,'#f93',2);if(t.hp<=0)kill(t)}
   else if(id==='grease'){msg('Grave Tar splashes out and clings!','warn');for(const o of [...G.mons])if(Math.max(Math.abs(o.x-t.x),Math.abs(o.y-t.y))<=1){o.slow=6;o.alert=true;G.floaters.push({x:o.x,y:o.y,t:'slow',c:'#8ab',l:25});blood(o.x,o.y,8,'#5a5a78',1.5)}}
@@ -87,8 +123,11 @@ function useCons(){if(paused||G.over)return;stopTravel();
   else if(id==='map'){for(let y=0;y<H;y++)for(let x=0;x<W;x++)G.seen[y][x]=true;msg('The map etches the floor into your memory.','info')}
   else if(id==='rite'){const rs=G.rooms.slice(1);for(let i=0;i<40;i++){const r=pick(rs),x=rnd(r.x,r.x+r.w-1),y=rnd(r.y,r.y+r.h-1);if(G.map[y][x]===1&&!monAt(x,y)&&!(x===G.sD.x&&y===G.sD.y)&&!(x===G.sU.x&&y===G.sU.y)){p.x=x;p.y=y;p.rx=x;p.ry=y;break}}msg('The rite tears you through the dark.','info')}
   consume(it)}
- selItem=null;computeFOV();endTurn(false,false)}
-function renderLog(){document.getElementById('log').innerHTML=G.log.slice(0,6).map((l,i)=>`<div class="${l.c} n${i}">${l.t}</div>`).join('');
+ selItem=null;closePack();computeFOV();endTurn(false,false)}
+// Messages float over the map like in Shattered Pixel Dungeon and fade after a few seconds; the 📜 button opens the full history.
+const LOG_SHOW=4,LOG_MS=7000;
+function renderLog(){const now=performance.now(),el=document.getElementById('log');
+ el.innerHTML=G.log.slice(0,LOG_SHOW).filter(l=>now-l.t0<LOG_MS).reverse().map(l=>`<div class="${l.c}">${l.t}</div>`).join('');
  if(document.getElementById('logModal').style.display==='flex')renderLogFull()}
-function renderLogFull(){const h=document.getElementById('logFull');h.innerHTML=G.log.map(l=>`<div class="${l.c}"><small>T${l.turn}</small> ${l.t}</div>`).join('')}
+setInterval(()=>{if(G&&G.log&&G.log.length&&G.log[0])renderLog()},700);function renderLogFull(){const h=document.getElementById('logFull');h.innerHTML=G.log.map(l=>`<div class="${l.c}"><small>T${l.turn}</small> ${l.t}</div>`).join('')}
 function openLog(){document.getElementById('logModal').style.display='flex';renderLogFull()}

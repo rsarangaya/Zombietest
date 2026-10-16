@@ -23,7 +23,43 @@ const TPL=[
 {id:'l_crow',kind:'legs',n:'Crow Legs',t:2,col:'#d0a030',spr:'crow',st:{spd:.20,hp:4},src:'crow'},
 {id:'l_stilt',kind:'legs',n:'Stilt Legs',t:3,col:'#8a6a4a',spr:'stilt',st:{spd:.25,sight:1,hp:5},src:'bloat'},
 {id:'l_pillar',kind:'legs',n:'Golem Pillars',t:4,col:'#a87868',spr:'pillar',st:{def:3,hp:10},fx:'planted',fxd:'Planted: immune to stun and knockback',src:'golem'},
-{id:'l_runner',kind:'legs',n:"Runner's Legs",t:5,col:'#c8c0a0',spr:'runner',st:{spd:.35,def:1,hp:9},fx:'sprint',fxd:'Sprint: the first move after resting 5+ turns is free',src:'boss'}];
+{id:'l_runner',kind:'legs',n:"Runner's Legs",t:5,col:'#c8c0a0',spr:'runner',st:{spd:.35,def:1,hp:9},fx:'sprint',fxd:'Sprint: the first move after resting 5+ turns is free',src:'boss'},
+{id:'t_apron',kind:'torso',n:"Surgeon's Apron",t:5,col:'#c8d0d0',spr:'labcoat',st:{def:3,hp:12},fx:'ward',fxd:'Bone Ward: the first hit on each floor is halved',src:'boss'},
+// ---- parts dropped by the rest of the bestiary: every monster drops grafts of its own kind ----
+{id:'l_penitent',kind:'legs',n:"Penitent's Legs",t:2,col:'#a02828',spr:'runner',st:{spd:.12,hp:3},src:'cultist'},
+{id:'a_bloatarm',kind:'arm',n:'Gas-Swollen Arm',t:3,col:'#8a9a50',spr:'gfist',st:{atk:1,hp:8},src:'bloat'},
+{id:'h_ghoul',kind:'head',n:'Ghoul Maw',t:2,col:'#7a8a68',spr:'ghoul',st:{atk:1,steal:1,hp:2},src:'ghoul'},
+{id:'a_ghoul',kind:'arm',n:'Ghoul Claws',t:2,col:'#7a8a68',spr:'hook',st:{atk:2},fx:'rend',fxd:'Rend: 25% chance to make the target bleed (4 turns)',src:'ghoul'},
+{id:'t_ghoul',kind:'torso',n:'Exposed-Rib Torso',t:3,col:'#7a8a68',spr:'rib',st:{def:1,hp:6},src:'ghoul'},
+{id:'l_ghoul',kind:'legs',n:'Ghoul Lope',t:3,col:'#7a8a68',spr:'lope',st:{spd:.22,hp:3},src:'ghoul'},
+{id:'h_acolyte',kind:'head',n:'Hexing Hood',t:3,col:'#5a3a8a',spr:'acolyte',st:{sight:1,hp:3},src:'acolyte'},
+{id:'a_acolyte',kind:'arm',n:'Ritual Hand',t:3,col:'#8a6aaa',spr:'fist',st:{atk:1},src:'acolyte'},
+{id:'t_acolyte',kind:'torso',n:'Hexed Robes',t:4,col:'#4a2a6a',spr:'cloak',st:{def:1,hp:5},fx:'dodge',fxd:'Light Fall: 10% chance to dodge any attack',src:'acolyte'},
+{id:'l_acolyte',kind:'legs',n:'Veiled Legs',t:3,col:'#4a2a6a',spr:'stilt',st:{spd:.18,hp:4},src:'acolyte'},
+{id:'h_warden',kind:'head',n:"Warden's Helm",t:3,col:'#9a4a3a',spr:'golem',st:{def:2,hp:6},src:'warden'},
+{id:'t_warden',kind:'torso',n:"Warden's Plate",t:3,col:'#9a4a3a',spr:'slab',st:{def:3,hp:8},src:'warden'},
+{id:'a_warden',kind:'arm',n:"Warden's Mace",t:3,col:'#9a4a3a',spr:'gfist',st:{atk:3},src:'warden'},
+{id:'l_warden',kind:'legs',n:"Warden's Greaves",t:3,col:'#9a4a3a',spr:'pillar',st:{def:2,hp:6},src:'warden'},
+{id:'h_matron',kind:'head',n:"Matron's Visage",t:4,col:'#c07a9a',spr:'bloat',st:{hp:10,sight:1},fx:'thorns',fxd:'Acid Spit: melee attackers take 1 damage when they hit you',src:'matron'},
+{id:'t_matron',kind:'torso',n:"Matron's Womb",t:4,col:'#c07a9a',spr:'belly',st:{hp:20},src:'matron'},
+{id:'a_matron',kind:'arm',n:"Matron's Tendril",t:4,col:'#c07a9a',spr:'tentacle',st:{atk:2},fx:'sweep',fxd:'Sweep: also hits one adjacent enemy for half damage',src:'matron'},
+{id:'l_matron',kind:'legs',n:"Brood-Mother's Legs",t:4,col:'#c07a9a',spr:'crawl',st:{spd:.2,hp:8},src:'matron'},
+{id:'h_abom',kind:'head',n:'Many-Eyed Head',t:5,col:'#8a5ab0',spr:'abom',st:{sight:3,atk:1,hp:6},src:'abomination'},
+{id:'t_abom',kind:'torso',n:'Pulsing Mass',t:5,col:'#6a4a8a',spr:'mass',st:{def:1,hp:30},fx:'regen',fxd:'Stitched Hide: +1 HP every 5 turns while hunger is under 75%',src:'abomination'},
+{id:'a_nyx',kind:'arm',n:'Nyx Lash',t:5,col:'#7a4aa0',spr:'tentacle',st:{atk:3},src:'abomination'},
+{id:'l_abom',kind:'legs',n:'Writhing Limbs',t:5,col:'#6a4a8a',spr:'crawl',st:{spd:.30,hp:8},src:'abomination'},
+{id:'h_guard',kind:'head',n:'Guard Helmet',t:4,col:'#5a6a8a',spr:'guard',st:{def:3,hp:6},src:'guard'},
+{id:'t_guard',kind:'torso',n:'Riot Vest',t:4,col:'#3a4a6a',spr:'vest',st:{def:3,hp:8},src:'guard'},
+{id:'a_baton',kind:'arm',n:'Shock Baton',t:4,col:'#3a4a6a',spr:'baton',st:{atk:3},fx:'crush',fxd:'Crush: 20% chance to stun the target for a turn',src:'guard'},
+{id:'l_guard',kind:'legs',n:'Combat Boots',t:4,col:'#3a4a6a',spr:'boots',st:{def:2,spd:.2,hp:6},src:'guard'},
+{id:'h_rifle',kind:'head',n:"Marksman's Cap",t:4,col:'#6a7a4a',spr:'guard',st:{sight:3,atk:1},src:'rifleman'},
+{id:'t_rifle',kind:'torso',n:'Bandolier Torso',t:4,col:'#5a6a3a',spr:'vest',st:{def:2,hp:6},src:'rifleman'},
+{id:'a_rifle',kind:'arm',n:'Rifle Arm',t:5,col:'#5a6a3a',spr:'gun',st:{atk:3},src:'rifleman'},
+{id:'l_rifle',kind:'legs',n:"Hunter's Legs",t:5,col:'#5a6a3a',spr:'boots',st:{spd:.30,hp:6},fx:'sprint',fxd:'Sprint: the first move after resting 5+ turns is free',src:'rifleman'},
+{id:'h_sci',kind:'head',n:'Goggled Head',t:4,col:'#d8d8d0',spr:'scientist',st:{sight:2,atk:1,hp:4},src:'scientist'},
+{id:'t_sci',kind:'torso',n:'Lab Coat Torso',t:4,col:'#d8d8d0',spr:'labcoat',st:{hp:8,def:1},src:'scientist'},
+{id:'a_sci',kind:'arm',n:'Syringe Arm',t:5,col:'#d8d8d0',spr:'syringe',st:{atk:2},src:'scientist'},
+{id:'l_sci',kind:'legs',n:'Surgical Legs',t:4,col:'#d8d8d0',spr:'boots',st:{spd:.20,hp:5},src:'scientist'}];
 // Hidden curses on grafts. Revealed (and applied) the moment a graft is attached; Formaldehyde Brine can cleanse one.
 const TAINT={rot:{n:'Rotting',d:'it decays 80% faster'},itch:{n:'Ravenous',d:'it makes you hungrier every turn'},weep:{n:'Weeping',d:'it seeps: -1 HP every 8 turns'}};
 const QUAL=[['Withered',.6],['',1],['',1],['Sturdy',1.2],['Pristine',1.5]];
@@ -47,6 +83,10 @@ jar:{n:'Putrid Jar',col:'#6a4a3a',w:8,md:6,stack:1,desc:'Throw (range 5): 4 dama
 rite:{n:'Burial Rite',col:'#b8a070',w:6,md:8,stack:1,desc:'Read: teleport to a random room.'},
 serum:{n:'Graft Serum',col:'#78b030',w:0,md:1,stack:1,desc:'Inject: permanently +3 max HP.'},
 rites:{n:'Last Rites',col:'#d8a830',w:0,md:12,stack:0,desc:'Passive: if you would die, revive once at 50% HP.'}};
+// Chance that a defeated monster drops one of its own body parts. Mini-bosses and the final boss always do.
+const PART_CHANCE={maggot:.10,crow:.12,cultist:.14,bloat:.14,golem:.18,ghoul:.14,acolyte:.16,guard:.16,rifleman:.16,scientist:.18};
+function mkMonsterPart(m,depth){const pool=TPL.filter(t=>t.src===m.k);
+ return pool.length?mkPart(depth,m.k,pick(pool).id):mkPart(depth,m.k)}
 // Starting limbs: weak, but they rot much faster than any found graft (decay 0.6/turn vs 0.18-0.55).
 const STARTER={
  armL:{id:'s_armL',kind:'arm',n:'Stitched Left Arm',st:{atk:0}},

@@ -80,7 +80,7 @@ function changeLevel(dir){
  const st=dir>0?G.sU:G.sD;let best=null;
  for(let r=1;r<W&&!best;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){const x=st.x+dx,y=st.y+dy;if(!best&&walk(x,y)&&G.map[y][x]!==2&&!monAt(x,y)&&!(x===G.sU.x&&y===G.sU.y)&&!(x===G.sD.x&&y===G.sD.y))best={x,y}}
  p.x=best.x;p.y=best.y;p.rx=p.x;p.ry=p.y;G.mons.forEach(m=>{m.rx=m.x;m.ry=m.y});
- pan.x=pan.y=0;G.sbx=null;G.dying=[];G.fogA=null;G.cx=Math.max(0,Math.min(W-VW,p.x-(VW>>1)));G.cy=Math.max(0,Math.min(H-VH,p.y-(VH>>1)));computeFOV();
+ pan.x=pan.y=0;G.sbx=null;G.dying=[];G.fogA=null;G.cx=p.x+.5;G.cy=p.y+.5;computeFOV();
  if(G.turn>0||d>1)msg(dir>0?`You descend into ${G.reg.n}. Depth ${d}.`:`You climb back to depth ${d}.`,'info');
  if(!existing&&(d-1)%STAGE_LEN===0){const st=G.regIdx+1;showHint(`STAGE ${st}: ${G.reg.n.toUpperCase()}`+(st===STAGES?' - the survivors are human, and armed.':''));if(d>1)msg('You arrive in a waste room. The dead dump their leavings here: take what you need.','info');else msg('Something has been dumped in this waste room. Take what you can.','info')}}
 const monAt=(x,y)=>G.mons.find(m=>m.x===x&&m.y===y);

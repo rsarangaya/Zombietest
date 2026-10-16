@@ -66,7 +66,9 @@ const issues=run(`(function(){const e=[];
  {const a=mkStarter('legs');if(a.decay<=.55)e.push('starter limbs must rot faster than any graft')}
  for(const id in ABIL){if(!TPL.some(t=>t.id===id))e.push('ability for unknown part '+id);const a=ABIL[id];if(!a.n||!(a.cd>0)||typeof a.run!=='function')e.push('malformed ability '+id)}
  for(const k in CONS)if(!CONSPR[k])e.push('missing item icon '+k);
- for(const k in MON)if(!S[k])e.push('missing monster sprite '+k);
+ for(const k in MON){if(!S[k])e.push('missing monster sprite '+k);const ps=TPL.filter(t=>t.src===k);if(ps.length<3)e.push('monster '+k+' has only '+ps.length+' own parts');if(!ps.some(t=>t.kind==='legs')&&!['boss'].includes(k))e.push('monster '+k+' drops no legs')}
+ for(const k in PART_CHANCE)if(!MON[k])e.push('PART_CHANCE for unknown monster '+k);
+ for(const k in MON)if(!MON[k].mini&&k!=='boss'&&!(PART_CHANCE[k]>0))e.push('no part chance for '+k);
  const rows=[...Object.values(CONSPR)];for(const r of Object.values(REGION))for(const v of Object.values(r))rows.push(v);
  for(const r of rows)for(const line of r)for(const ch of line)if(ch!=='.'&&!'abcdefghijklmnopqrstuvwxyz'.includes(ch))e.push('odd sprite char '+ch);
  for(const t of TPL){const p=mkPart(10,null,t.id);if(p.id!==t.id)e.push('mkPart forceId failed '+t.id)}

@@ -72,11 +72,15 @@ function kill(m){
  msg(`You devour the ${m.n}. (+${heal} HP, hunger eased)`,'good');
  if(m.burst){for(let i=0;i<20;i++)blood(m.x,m.y,1,'#9ad030',3);if(Math.max(Math.abs(m.x-p.x),Math.abs(m.y-p.y))<=1){hurt(3);msg('The Gore Bloat bursts in acid! (-3)','bad')}}
  p.xp+=m.xp;while(p.xp>=p.lvl*10){p.xp-=p.lvl*10;p.lvl++;msg(`Your corruption deepens. Level ${p.lvl}! (+3 max HP)`,'info');sfx('level')}
- if(m.mini||((G.dropCounts[G.depth]||0)<3&&R()<m.drop)){
-  G.dropCounts[G.depth]=(G.dropCounts[G.depth]||0)+1;const it=m.k==='boss'?mkPart(MAX_DEPTH,'boss'):m.mini?mkPart(G.depth+2,m.k):mkLoot(G.depth,m.k,.30);
+ // two independent drops: one of the monster's own body parts (guaranteed from bosses), and the usual supplies
+ if(m.mini||m.k==='boss'||R()<(PART_CHANCE[m.k]||0)){
+  const it=mkMonsterPart(m,m.k==='boss'?MAX_DEPTH:m.mini?G.depth+2:G.depth);
+  G.items.push({x:m.x,y:m.y,it});msg(`The ${m.n} leaves a body part: ${it.name}.`,'good')}
+ if(!m.mini&&m.k!=='boss'&&(G.dropCounts[G.depth]||0)<3&&R()<m.drop){
+  G.dropCounts[G.depth]=(G.dropCounts[G.depth]||0)+1;const it=mkLoot(G.depth,m.k,0);
   G.items.push({x:m.x,y:m.y,it});msg(`It left something: ${it.name}.`,'info')}
  if(m.k==='boss')win()}
-function hurt(n){const p=G.p;if(G.god)return;p.hp-=n;sfx('hurt');G.floaters.push({x:p.x,y:p.y,t:'-'+n,c:'#f44',l:25});blood(p.x,p.y,8,'#6a8a3a');G.shake=Math.min(10,3+n/2);stopTravel()}
+function hurt(n){const p=G.p;if(G.god)return;p.hp-=n;sfx('hurt');if(settings.haptics&&navigator.vibrate)try{navigator.vibrate(Math.min(70,20+n*6))}catch(e){}G.floaters.push({x:p.x,y:p.y,t:'-'+n,c:'#f44',l:25});blood(p.x,p.y,8,'#6a8a3a');G.shake=Math.min(10,3+n/2);stopTravel()}
 function monstersAct(moveOnly){
  const p=G.p,s=stat();
  const D=Array.from({length:H},()=>new Array(W).fill(999));D[p.y][p.x]=0;const q=[[p.x,p.y]];
@@ -89,7 +93,7 @@ function monstersAct(moveOnly){
   if(moveOnly&&m.warning)continue; // extra move-only pass never resolves a telegraphed attack early
  if(m.warning){const w=m.warning;m.warning=null;
   if(p.x===w.x&&p.y===w.y&&los(m.x,m.y,p.x,p.y)&&Math.max(Math.abs(p.x-m.x),Math.abs(p.y-m.y))<=(w.ranged?m.rng||6:1)){
-   G.attackFX.push({x:m.x,y:m.y,tx:w.x,ty:w.y,life:18,max:18,ranged:w.ranged});mattack(m,s,w.ranged);
+   if(w.ranged){const rk={rifleman:["bullet","#ffd070"],scientist:["lob","#9ad030"],acolyte:["bolt","#c060ff"],cultist:["bolt","#ffd040"]}[m.k]||["bolt","#ff7040"];addFX(rk[0],{org:m,tgt:p,col:rk[1],life:rk[0]==="bullet"?14:rk[0]==="lob"?24:18})}else G.attackFX.push({x:m.x,y:m.y,tx:w.x,ty:w.y,life:18,max:18,ranged:false});mattack(m,s,w.ranged);
   }else msg(`The ${m.n}'s attack strikes empty stone.`,'info');
   continue;
  }
@@ -147,6 +151,7 @@ function scentAct(){
 function scentEffects(){const p=G.p;
  for(let y=Math.max(0,p.y-8);y<=Math.min(H-1,p.y+8);y++)for(let x=Math.max(0,p.x-8);x<=Math.min(W-1,p.x+8);x++)if((x-p.x)**2+(y-p.y)**2<=64)G.seen[y][x]=true;
  let n=0;for(const m of G.mons)if(Math.max(Math.abs(m.x-p.x),Math.abs(m.y-p.y))<=10){n++;G.floaters.push({x:m.x,y:m.y,t:'!',c:'#e55',l:70})}
+addFX('sonar',{org:G.p,col:'#e55',r:T*8,life:36});
  msg(n?`You sniff the air. ${n} presence${n>1?'s':''} nearby.`:'You sniff the air. Nothing stirs nearby.','info')}
 function pathTo(tx,ty){
  const p=G.p,prev=new Map(),key=(x,y)=>y*W+x,q=[[p.x,p.y]];prev.set(key(p.x,p.y),null);

@@ -5,40 +5,69 @@
 <link rel="stylesheet" href="css/style.css">
 </head><body>
 <div id="app">
- <div id="main">
-  <h1>☠ ROTTEN DEPTHS ☠</h1>
-  <div class="bar"><div class="meter" id="hp"><i></i><span></span></div><div class="meter" id="hu"><i></i><span></span></div></div>
-  <div class="bar"><div class="meter" id="xp"><i></i><span></span></div><div id="where"></div></div>
-  <div id="mapwrap"><canvas id="cv" width="480" height="480"></canvas><div id="hint"></div></div>
-  <div id="log" title="Click for the full message log"></div>
- </div>
- <div id="side">
-  <h3>BODY (tap to inspect)</h3><div id="slots"></div>
-  <h3>BACKPACK</h3><div id="inv"></div>
-  <h3 id="floorH" style="display:none">ON THE GROUND (tap to pick up)</h3><div id="floor" style="display:none"></div>
-  <div id="detail">Tap an item to inspect it.</div>
-  <div id="btns">
-   <button id="bWait" title="Wait a turn (Space)">Wait</button><button id="bRest" title="Rest until healed (R)">Rest</button><button id="bScent" title="Sniff for nearby enemies and the layout (X)">Scent</button><button id="bLog">Log</button>
-   <button id="bDown">Travel ▼ down</button><button id="bUp">Travel ▲ up</button><button id="bView">Center view</button><button id="bSound">Sound: on</button><button id="bNew">New Run</button><button id="bMenu">Menu</button>
+ <div id="mapwrap">
+  <canvas id="cv"></canvas>
+
+  <!-- top-left: vitals -->
+  <div id="hudTop">
+   <div class="meter" id="hp"><i></i><span></span></div>
+   <div class="meter" id="hu"><i></i><span></span></div>
+   <div class="meter thin" id="xp"><i></i><span></span></div>
+   <div id="where"></div>
+  </div>
+  <!-- top-right: system buttons (the minimap is drawn on the canvas underneath) -->
+  <div id="hudRight"><button class="ibtn" id="bLog" title="Message log (L)">📜</button><button class="ibtn" id="bMenu" title="Menu (Esc)">☰</button></div>
+
+  <div id="hint"></div>
+  <div id="inspect"></div>
+
+  <!-- bottom: fading messages + action bar -->
+  <div id="bottom">
+   <div id="log"></div>
+   <div id="toolbar">
+    <button class="tbtn" id="bWait" title="Wait a turn (Space)"><b>⌛</b><small>Wait</small></button>
+    <button class="tbtn" id="bRest" title="Rest until healed (R)"><b>💤</b><small>Rest</small></button>
+    <button class="tbtn" id="bScent" title="Sniff out enemies and the layout (X)"><b>👃</b><small>Scent</small></button>
+    <button class="tbtn" id="bPack" title="Backpack and body (I)"><b>🎒</b><small>Pack</small></button>
+    <button class="tbtn" id="bGround" title="Items on this tile (G)" style="display:none"><b>✋</b><small>Ground</small></button>
+    <span id="quick"></span>
+    <button class="tbtn" id="bDown" title="Travel to the stairs down (&gt;)" style="display:none"><b>⬇</b><small>Down</small></button>
+    <button class="tbtn" id="bUp" title="Travel to the stairs up (&lt;)" style="display:none"><b>⬆</b><small>Up</small></button>
+    <button class="tbtn" id="bView" title="Re-centre the view" style="display:none"><b>◎</b><small>Centre</small></button>
+   </div>
   </div>
  </div>
 </div>
+
+<!-- backpack window: body, pack and ground scroll; the action bar below stays put -->
+<div id="pack" class="modal"><div class="win" id="packWin">
+ <div class="winHead"><b>BODY &amp; PACK</b><button class="ibtn" id="packClose">✕</button></div>
+ <div class="winBody">
+  <h3>BODY (tap to inspect)</h3><div id="slots"></div>
+  <h3 id="packH">BACKPACK</h3><div id="inv"></div>
+  <h3 id="floorH" style="display:none">ON THE GROUND</h3><div id="floor" style="display:none"></div>
+ </div>
+ <div id="detail">Tap an item to inspect it.</div>
+</div></div>
+
 <div id="menu"><div>
- <h1>ROTTEN DEPTHS</h1><p>A borrowed body. A finite life. <small>alpha 0.2</small></p>
+ <h1>ROTTEN DEPTHS</h1><p>A borrowed body. A finite life. <small>alpha 0.3</small></p>
  <button id="mResume">Enter / Resume</button><button id="mNew">New Run</button>
  <p><label>Seed <input id="seedIn" placeholder="random" size="12"></label> <small>current: <span id="seedShow"></span></small></p>
- <p>Arrows/WASD/QEZC move · Space wait · R rest · X scent · click or tap the map to travel · bump to attack · right-click or long-press a monster to inspect it.</p>
- <p>Drag the map (mouse or finger) or Shift+Arrows to look around. Pinch or scroll to zoom. The view stays where you put it until you press Center view.</p>
- <p>Tap an attached graft on your body to Detach it, Devour it, or use its active ability (marked ⚡ when ready).</p>
+ <p>Arrows/WASD/QEZC move · Space wait · R rest · X scent · I pack · G pick up · L log · &gt; / &lt; stairs · Shift+1-9 quick buttons.</p>
+ <p>Tap the map to travel, bump to attack, right-click or long-press a monster to inspect it. Drag to look around, pinch or scroll to zoom.</p>
+ <p>Tap an attached graft in your pack to Detach, Devour, or use its active ability (also shown on the action bar when ready).</p>
  <p>Red warning tiles show an attack that resolves on your next action. Step aside or stun its source.</p>
  <p>Descend 20 floors in four stages of five. Each stage starts in a waste room stocked with a few free items. The last stage is human.</p>
- <p>Your starting limbs are weak and rot very fast. Stronger grafts decay faster. Stored grafts decay at 25% speed. Legs set your speed: rotten legs or none at all slow you.</p>
+ <p>Your starting limbs are weak and rot very fast. Stronger grafts decay faster. Legs set your speed.</p>
  <fieldset><legend>Settings</legend>
   <label><input type="checkbox" id="sSound"> Sound</label>
   <label><input type="checkbox" id="sShake"> Screen shake</label>
   <label><input type="checkbox" id="sReduce"> Reduced motion</label>
   <label><input type="checkbox" id="sHints"> Hints</label>
-  <label>Text size <select id="sText"><option value="0.85">Small</option><option value="1">Normal</option><option value="1.2">Large</option><option value="1.4">Largest</option></select></label>
+  <label><input type="checkbox" id="sHaptic"> Vibration</label>
+  <label><input type="checkbox" id="sMap"> Minimap</label>
+  <label>Interface size <select id="sText"><option value="0.85">Small</option><option value="1">Normal</option><option value="1.2">Large</option><option value="1.4">Largest</option></select></label>
  </fieldset>
  <p><button id="mCopy">Copy run summary</button><button id="mDebug">Debug console (`)</button></p>
 </div></div>

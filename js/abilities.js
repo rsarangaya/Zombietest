@@ -1,32 +1,70 @@
 // Active graft abilities. Select an attached part on your body, then press its ability button.
 // Each ability takes a turn and then recharges for `cd` turns. Abilities act on adjacent enemies or the nearest visible one,
 // so no targeting step is needed. run() returns false (and spends nothing) when there is nothing to act on.
+// Every ability plays its own effect (see drawFX in render.js): whips, floating eyes, tracers, lobbed acid, shockwaves...
 const adjacentEnemies=()=>{const p=G.p;return G.mons.filter(m=>!m.dead&&Math.max(Math.abs(m.x-p.x),Math.abs(m.y-p.y))<=1)};
 const finish=m=>{if(m.hp<=0&&!m.dead)kill(m)};
 const needAdj=()=>{const a=adjacentEnemies();if(!a.length)msg('No enemy is adjacent.','warn');return a};
+function targetWithin(r){const p=G.p;let best=null,bd=99;
+ for(const m of G.mons){if(m.dead||!G.vis[m.y][m.x])continue;const d=Math.max(Math.abs(m.x-p.x),Math.abs(m.y-p.y));if(d<=r&&d<bd&&los(p.x,p.y,m.x,m.y)){bd=d;best=m}}
+ if(!best)msg('No target in range.','warn');return best}
+// ranged hit: deals damage, queues the matching projectile effect
+const shot=(t,dmg,col,kind='bolt',life=16)=>{t.hp-=dmg;t.alert=true;addFX(kind,{org:G.p,tgt:t,col,life});
+ G.floaters.push({x:t.x,y:t.y,t:'-'+dmg,c:col||'#fc6',l:25});blood(t.x,t.y,7)};
+const fxAt=(kind,m,col,life,extra)=>addFX(kind,{org:G.p,tgt:m,col,life,...extra});
 const ABIL={
  a_scythe:{n:'Whirl',cd:8,desc:'Strike every adjacent enemy.',run:()=>{const a=needAdj();if(!a.length)return false;
-  lunge(G.p,a[0].x,a[0].y);for(const m of a){strike(m);finish(m)}msg(`You whirl the scythe through ${a.length} enem${a.length>1?'ies':'y'}.`,'good')}},
+  lunge(G.p,a[0].x,a[0].y);addFX('whirl',{org:G.p,life:20});for(const m of a){fxAt('impact',m,'#fff',16,{delay:4});strike(m);finish(m)}msg(`You whirl the scythe through ${a.length} enem${a.length>1?'ies':'y'}.`,'good')}},
  a_gfist:{n:'Ground Slam',cd:12,desc:'Stun every adjacent enemy for a turn and hit them for 2.',run:()=>{const a=needAdj();if(!a.length)return false;
-  G.shake=8;for(const m of a){m.hp-=2;m.stun=1;m.alert=true;G.floaters.push({x:m.x,y:m.y,t:'stun',c:'#fe6',l:25});blood(m.x,m.y,8);finish(m)}msg('The ground buckles under your fist.','good')}},
+  G.shake=8;addFX('ring',{org:G.p,col:'#d8c090',r:64,debris:true,life:24});
+  for(const m of a){m.hp-=2;m.stun=1;m.alert=true;G.floaters.push({x:m.x,y:m.y,t:'stun',c:'#fe6',l:25});blood(m.x,m.y,8);finish(m)}msg('The ground buckles under your fist.','good')}},
  a_saw:{n:'Butcher',cd:10,desc:'Triple-damage strike on one adjacent enemy. Costs 6 rot.',run:(e,k)=>{const a=needAdj();if(!a.length)return false;
-  const m=a[0];lunge(G.p,m.x,m.y);const d=strike(m);m.hp-=d*2;G.floaters.push({x:m.x,y:m.y,t:'-'+d*3,c:'#fc6',l:30});wear(k,6);msg(`The bonesaw butchers the ${m.n} for ${d*3}.`,'good');finish(m)}},
+  const m=a[0];lunge(G.p,m.x,m.y);fxAt('slash',m,'#ffe0a0',22);const d=strike(m);m.hp-=d*2;G.floaters.push({x:m.x,y:m.y,t:'-'+d*3,c:'#fc6',l:30});wear(k,6);msg(`The bonesaw butchers the ${m.n} for ${d*3}.`,'good');finish(m)}},
  a_hook:{n:'Rend Open',cd:8,desc:'Every adjacent enemy bleeds for 5 turns.',run:()=>{const a=needAdj();if(!a.length)return false;
-  for(const m of a){m.bleed=5;m.alert=true;G.floaters.push({x:m.x,y:m.y,t:'bleed',c:'#c33',l:25});blood(m.x,m.y,6)}msg('The hook tears them open.','good')}},
+  for(const m of a){m.bleed=5;m.alert=true;fxAt('claws',m,'#e8e0c8',22);G.floaters.push({x:m.x,y:m.y,t:'bleed',c:'#c33',l:25});blood(m.x,m.y,6)}msg('The hook tears them open.','good')}},
  t_belly:{n:'Vent Gas',cd:12,desc:'Poison every adjacent enemy for 5 turns.',run:()=>{const a=needAdj();if(!a.length)return false;
-  for(const m of a){m.poison=5;m.alert=true;G.floaters.push({x:m.x,y:m.y,t:'gas',c:'#9c3',l:25})}blood(G.p.x,G.p.y,16,'#9ad030',2.5);msg('Your belly sighs out a green cloud.','good')}},
+  addFX('puff',{org:G.p,col:'#9ad030',r:34,life:34});for(const m of a){m.poison=5;m.alert=true;G.floaters.push({x:m.x,y:m.y,t:'gas',c:'#9c3',l:25})}msg('Your belly sighs out a green cloud.','good')}},
  h_bloat:{n:'Acid Spit',cd:8,desc:'Spit at the nearest enemy (range 5) for 4 damage and poison.',run:()=>{const t=nearestTarget();if(!t){msg('No target in range.','warn');return false}
-  G.attackFX.push({x:G.p.x,y:G.p.y,tx:t.x,ty:t.y,life:12,max:12,ranged:true,player:true});t.hp-=4;t.poison=5;t.alert=true;
-  G.floaters.push({x:t.x,y:t.y,t:'-4',c:'#9c3',l:25});blood(t.x,t.y,8,'#9ad030',2);msg(`You spit acid at the ${t.n}.`,'good');finish(t)}},
+  shot(t,4,'#9ad030','lob',24);t.poison=5;msg(`You spit acid at the ${t.n}.`,'good');finish(t)}},
  h_crow:{n:'Carrion Call',cd:20,desc:'Sense nearby enemies and the layout, like Scent.',run:()=>{scentEffects()}},
- t_rib:{n:'Bone Ward',cd:25,desc:'Renew your Bone Ward on this floor.',run:()=>{G.ward[G.depth]=false;msg('Your ribs knit a fresh ward.','good')}},
- t_slab:{n:'Stone Skin',cd:30,desc:'Heal 8 HP.',run:()=>{const p=G.p;p.hp=Math.min(stat().hp,p.hp+8);G.floaters.push({x:p.x,y:p.y,t:'+8',c:'#8d6',l:25});msg('Your hide knits itself shut. (+8 HP)','good')}},
- l_runner:{n:'Burst of Speed',cd:20,desc:'Your next 4 moves are free.',run:()=>{G.p.burst=4;msg('Your legs coil. The next steps cost no time.','good')}},
- l_crow:{n:'Skitter',cd:15,desc:'Your next 3 moves are free.',run:()=>{G.p.burst=3;msg('You skitter on hooked feet.','good')}}};
+ t_rib:{n:'Bone Ward',cd:25,desc:'Renew your Bone Ward on this floor.',run:()=>{G.ward[G.depth]=false;addFX('ward',{org:G.p,col:'#cfe8ff',life:34});msg('Your ribs knit a fresh ward.','good')}},
+ t_slab:{n:'Stone Skin',cd:30,desc:'Heal 8 HP.',run:()=>{const p=G.p;p.hp=Math.min(stat().hp,p.hp+8);addFX('heal',{org:p,life:34});G.floaters.push({x:p.x,y:p.y,t:'+8',c:'#8d6',l:25});msg('Your hide knits itself shut. (+8 HP)','good')}},
+ l_runner:{n:'Burst of Speed',cd:20,desc:'Your next 4 moves are free.',run:()=>{G.p.burst=4;addFX('streak',{org:G.p,dir:G.p.face,life:26});msg('Your legs coil. The next steps cost no time.','good')}},
+ l_crow:{n:'Skitter',cd:15,desc:'Your next 3 moves are free.',run:()=>{G.p.burst=3;addFX('streak',{org:G.p,dir:G.p.face,life:24});msg('You skitter on hooked feet.','good')}}};
+
+// ---- abilities for parts dropped by the wider bestiary ----
+Object.assign(ABIL,{
+ a_bloatarm:{n:'Pop',cd:10,desc:'Burst the swollen arm over adjacent enemies: 3 damage and poison.',run:()=>{const a=needAdj();if(!a.length)return false;
+  for(const m of a){m.hp-=3;m.poison=4;m.alert=true;fxAt('puff',m,'#9ad030',30,{atTarget:true,r:20});G.floaters.push({x:m.x,y:m.y,t:'-3',c:'#9c3',l:25});blood(m.x,m.y,8,'#9ad030',2);finish(m)}}},
+ h_ghoul:{n:'Ravenous Bite',cd:12,desc:'Bite an adjacent enemy and heal for the damage dealt.',run:()=>{const a=needAdj();if(!a.length)return false;
+  const m=a[0];lunge(G.p,m.x,m.y);fxAt('bite',m,'#ece4cc',24);const d=strike(m);G.p.hp=Math.min(stat().hp,G.p.hp+d);G.floaters.push({x:G.p.x,y:G.p.y,t:'+'+d,c:'#8d6',l:25});msg(`You tear into the ${m.n} and feed (+${d}).`,'good');finish(m)}},
+ h_acolyte:{n:'Evil Eye',cd:14,desc:'Freeze the nearest enemy (range 5) for 2 turns.',run:()=>{const t=targetWithin(5);if(!t)return false;
+  t.stun=2;t.alert=true;t.warning=null;fxAt('eye',t,'#c060ff',54);G.floaters.push({x:t.x,y:t.y,t:'stun',c:'#fe6',l:30})}},
+ a_acolyte:{n:'Hex Bolt',cd:8,desc:'Bolt the nearest enemy (range 5): 3 damage and slow.',run:()=>{const t=targetWithin(5);if(!t)return false;
+  shot(t,3,'#c9a0ff','bolt',18);t.slow=5;msg(`A hex bolt wracks the ${t.n}.`,'good');finish(t)}},
+ a_warden:{n:'Shield Bash',cd:10,desc:'Smash one adjacent enemy: 3 damage and stun for 2 turns.',run:()=>{const a=needAdj();if(!a.length)return false;
+  const m=a[0];lunge(G.p,m.x,m.y);m.hp-=3;m.stun=2;m.alert=true;m.warning=null;G.shake=6;fxAt('impact',m,'#ffd070',18);fxAt('ring',m,'#ffd070',18,{atTarget:true,r:30});
+  G.floaters.push({x:m.x,y:m.y,t:'-3',c:'#fc6',l:25},{x:m.x,y:m.y,t:'stun',c:'#fe6',l:30});blood(m.x,m.y,8);finish(m)}},
+ t_matron:{n:'Afterbirth',cd:28,desc:'Heal 12 HP.',run:()=>{const p=G.p;p.hp=Math.min(stat().hp,p.hp+12);addFX('heal',{org:p,life:38});G.floaters.push({x:p.x,y:p.y,t:'+12',c:'#8d6',l:25});msg('The womb pulses and knits you back together. (+12 HP)','good')}},
+ a_nyx:{n:'Lash',cd:6,desc:'Whip the nearest enemy within 3 tiles for 4-7 + attack, dragging it one tile closer.',run:()=>{const t=targetWithin(3);if(!t)return false;
+  const p=G.p,d=rnd(4,7)+stat().atk;shot(t,d,'#c9a0ff','whip',32);
+  const nx=t.x+Math.sign(p.x-t.x),ny=t.y+Math.sign(p.y-t.y);
+  if(Math.max(Math.abs(t.x-p.x),Math.abs(t.y-p.y))>1&&walk(nx,ny)&&!monAt(nx,ny)&&!(nx===p.x&&ny===p.y)){t.x=nx;t.y=ny}
+  msg(`Nyx Lash cracks across the ${t.n} for ${d}.`,'good');finish(t)}},
+ h_abom:{n:'Paralytic Gaze',cd:20,desc:'Freeze every visible enemy within 5 tiles for a turn.',run:()=>{const p=G.p;let n=0;
+  for(const m of G.mons)if(!m.dead&&G.vis[m.y][m.x]&&Math.max(Math.abs(m.x-p.x),Math.abs(m.y-p.y))<=5){m.stun=1;m.alert=true;m.warning=null;fxAt('eye',m,'#ff4fd0',56,{delay:n*5});n++;G.floaters.push({x:m.x,y:m.y,t:'stun',c:'#fe6',l:30})}
+  if(!n){msg('Nothing to stare at.','warn');return false}msg(`Your eyes lock ${n} enem${n>1?'ies':'y'} in place.`,'good')}},
+ a_rifle:{n:'Gunshot',cd:7,desc:'Shoot the nearest enemy within 6 tiles for 6-10 + attack.',run:()=>{const t=targetWithin(6);if(!t)return false;
+  const d=rnd(6,10)+stat().atk;shot(t,d,'#ffd070','bullet',14);G.shake=5;msg(`The rifle barks. The ${t.n} takes ${d}.`,'good');finish(t)}},
+ t_sci:{n:'Stim',cd:25,desc:'Inject yourself: heal 6 HP and ease hunger by 10.',run:()=>{const p=G.p;p.hp=Math.min(stat().hp,p.hp+6);p.hunger=Math.max(0,p.hunger-10);addFX('heal',{org:p,life:30});G.floaters.push({x:p.x,y:p.y,t:'+6',c:'#8d6',l:25});msg('A cold rush floods your veins. (+6 HP)','good')}},
+ a_sci:{n:'Inject',cd:10,desc:'Stab one adjacent enemy: 2 damage and a heavy poison (8 turns).',run:()=>{const a=needAdj();if(!a.length)return false;
+  const m=a[0];lunge(G.p,m.x,m.y);m.hp-=2;m.poison=8;m.alert=true;fxAt('impact',m,'#9ad030',20);G.floaters.push({x:m.x,y:m.y,t:'-2',c:'#9c3',l:25});msg(`The syringe empties into the ${m.n}.`,'good');finish(m)}},
+ h_mask:{n:'Anesthetize',cd:18,desc:'Stun every adjacent enemy for 2 turns.',run:()=>{const a=needAdj();if(!a.length)return false;
+  addFX('puff',{org:G.p,col:'#bcd8ff',r:36,life:34});for(const m of a){m.stun=2;m.alert=true;m.warning=null;G.floaters.push({x:m.x,y:m.y,t:'stun',c:'#fe6',l:30})}msg('A sweet gas puts them under.','good')}}});
 function useAbility(k){
  if(paused||G.over)return;const p=G.p,e=p.eq[k];if(!e)return;const ab=ABIL[e.id];if(!ab)return;
  if(e.cd>0){msg(`${ab.n} is recharging (${e.cd} turns).`,'warn');return}
  stopTravel();
  if(ab.run(e,k)===false)return;
  e.cd=ab.cd+1; // +1: endTurn below ticks cooldowns once immediately
- sfx('use');selItem=null;if(G.over)return;endTurn(false,false)}
+ sfx('use');selItem=null;closePack();if(G.over)return;endTurn(false,false)}
