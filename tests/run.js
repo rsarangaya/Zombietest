@@ -3,10 +3,10 @@
 const fs=require('fs'),path=require('path'),vm=require('vm');
 const root=path.join(__dirname,'..','js');
 const proxy=()=>new Proxy(function(){},{get:(t,k)=>k==='canvas'?proxy():proxy(),set:()=>true,apply:()=>proxy()});
-const ctx=vm.createContext({console,Math,Set,Map,Array,Object,JSON,Float32Array,
- document:{createElement:()=>({width:0,height:0,getContext:()=>proxy()}),getElementById:()=>proxy()},
+const ctx=vm.createContext({console,Math,Set,Map,Array,Object,JSON,Float32Array,addEventListener(){},
+ document:{createElement:()=>({width:0,height:0,getContext:()=>proxy()}),getElementById:()=>proxy(),addEventListener(){}},
  performance:{now:()=>0},window:{},localStorage:{getItem:()=>null,setItem(){}}});
-for(const f of ['util','sprites','data','textures','level','game','abilities'])vm.runInContext(fs.readFileSync(path.join(root,f+'.js'),'utf8'),ctx,{filename:f+'.js'});
+for(const f of ['util','sprites','data','textures','level','game','abilities','runs'])vm.runInContext(fs.readFileSync(path.join(root,f+'.js'),'utf8'),ctx,{filename:f+'.js'});
 const run=code=>vm.runInContext(code,ctx);
 let fails=0,checks=0;
 const ok=(cond,msg)=>{checks++;if(!cond){fails++;if(fails<=25)console.log('FAIL:',msg)}};
@@ -166,5 +166,24 @@ const altar=run(`(function(){
 for(const b of altar.bad.slice(0,10))ok(false,'altar: '+b);
 ok(altar.altars>15,'altar rooms too rare: '+altar.altars);
 console.log('altar: lone offering '+JSON.stringify(Object.fromEntries(Object.entries(altar.one).filter(([k])=>k!=='M'&&k!=='n').map(([k,v])=>[k,+v.toFixed(2)])))+', '+altar.altars+' altar rooms in 300 floors');
+// ---- 9. saved levels survive a round trip (tile codes up to 10 = altar must not shift a row), Tendril Sweep reaches off-axis targets
+run(`var LVLKEYS=['map','rooms','vis','seen','shade','decor','items','mons','sD','sU','torches','barr','mounds']`); // mirrors state.js (not loaded headless)
+const rt=run(`(function(){const bad=[];
+ for(let seed=1;seed<=40;seed++){seedRng(seed);G={depth:3+seed%15,rites:false,levels:{},mons:[],items:[]};genLevel(G.depth);
+  const r=G.rooms[1];G.map[r.cy][r.cx]=10;G.map[r.cy][r.cx+1]=9;G.map[r.cy][r.cx+2]=8;
+  const o={};for(const k of LVLKEYS)o[k]=G[k];const back=unpackLevel(JSON.parse(JSON.stringify(packLevel(o))));
+  for(let y=0;y<H;y++){if(back.map[y].length!==W)bad.push('seed '+seed+': row '+y+' has '+back.map[y].length+' columns');
+   for(let x=0;x<W;x++)if(back.map[y][x]!==G.map[y][x]||back.decor[y][x]!==G.decor[y][x]){bad.push('seed '+seed+': tile '+x+','+y+' changed');y=H;break}}}
+ return bad})()`);
+for(const b of rt.slice(0,8))ok(false,'save round trip: '+b);
+ok(rt.length===0,'save round trip failed');
+const sweep=run(`(function(){
+ seedRng(3);G={depth:3,rites:false,levels:{},mons:[],items:[],log:[],floaters:[],parts:[],attackFX:[],dying:[],mstag:0};genLevel(3);
+ const r=G.rooms[1];for(let y=r.y;y<r.y+r.h;y++)for(let x=r.x;x<r.x+r.w;x++)G.map[y][x]=1;
+ G.p={x:r.x,y:r.y+1,hp:20,eq:{},inv:[],face:1,lvl:1,xp:0,hunger:0,bonusHp:0,candle:0,rest:0};
+ G.mons=[];G.vis=Array.from({length:H},()=>new Array(W).fill(true));
+ const m=spawn('maggot',{x:r.x+2,y:r.y+2},{alert:true});m.hp=m.max=99;msg=()=>{};addFX=()=>{};stat=()=>({atk:0,hp:20});pickedTarget=null;
+ ABIL.a_matron.run({name:'x'},'armR');return m.hp<m.max})()`);
+ok(sweep,'Tendril Sweep missed a target at a knight-move offset');
 console.log(fails?`\n${fails} of ${checks} checks FAILED`:`\nall ${checks} checks passed`);
 process.exit(fails?1:0);
