@@ -15,7 +15,7 @@ function addFX(kind,o={}){const life=o.life||20;if(o.org&&o.tgt&&o.org.x!==undef
 // turn to face a target's side (the player stores facing in .face, monsters in .fx)
 function faceTo(o,tx){const s=Math.sign(tx-o.x);if(!s)return;if(o.face!==undefined)o.face=s;else o.fx=s}
 const lunge=(o,tx,ty)=>{faceTo(o,tx);o.lg={dx:Math.sign(tx-o.x),dy:Math.sign(ty-o.y),t0:NOW}}; // attacker darts toward its target and back
-const LVLKEYS=['map','rooms','vis','seen','shade','decor','items','mons','sD','sU','torches','barr'];
+const LVLKEYS=['map','rooms','vis','seen','shade','decor','items','mons','sD','sU','torches','barr','mounds'];
 function openMenu(){paused=true;stopTravel();closePack();showMenuRuns(false);syncMenuPerk();document.getElementById('menu').style.display='flex'}
 function resumeRun(){if(!inRun()||G.over)return;hideMenuForRun()}
 // A seed typed in the menu (number or any text) makes the run reproducible; blank = random.

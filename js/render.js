@@ -12,6 +12,24 @@ function drawDoor(open,px,py,ew){
  if(!open){ctx.fillStyle='#2a1a0e';R(12,0,8,32);for(let k=0;k<4;k++){ctx.fillStyle=k%2?'#5a3a20':'#6a4628';R(13,2+k*7,6,6)}
   ctx.fillStyle='#2a2a30';R(12,6,8,3);R(12,22,8,3);ctx.fillStyle='#c8a030';R(15,22,3,3)}
  else{ctx.fillStyle='#3a2410';R(10,0,12,3);R(10,29,12,3);ctx.fillStyle='#5a3a20';R(10,0,12,1);R(10,29,12,1)}}
+// pile of bodies (all piles look alike: you only learn what is inside by searching)
+function drawMound(px,py,x,y){const sr=seeded(x*173+y*29);
+ ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(px+16,py+26,14,5,0,0,6.3);ctx.fill();
+ ctx.fillStyle='#4a3a2c';ctx.beginPath();ctx.ellipse(px+16,py+20,13,9,0,0,6.3);ctx.fill();ctx.fillStyle='#5e4a38';ctx.beginPath();ctx.ellipse(px+14,py+17,9,6,0,0,6.3);ctx.fill();
+ ctx.fillStyle='#7a6a5a';for(let i=0;i<3;i++)ctx.fillRect(px+6+Math.floor(sr()*18),py+12+Math.floor(sr()*10),5,2);
+ ctx.fillStyle='#cfc8a8';ctx.fillRect(px+18,py+11,6,5);ctx.fillStyle='#1a1410';ctx.fillRect(px+19,py+13,1,1);ctx.fillRect(px+22,py+13,1,1);
+ ctx.fillStyle='#a02828';ctx.fillRect(px+10,py+20,3,2);ctx.fillStyle='#8a8068';ctx.fillRect(px+6,py+15,10,2)}
+// swamp mire: murky water that ripples
+function drawSwamp(px,py,x,y){ctx.fillStyle='rgba(28,62,38,.62)';ctx.fillRect(px,py,T,T);
+ const w=Math.sin(tick/22+x*2.7+y*1.9);ctx.fillStyle='rgba(120,160,90,.28)';ctx.fillRect(px+4+Math.round(w*3),py+9,9,1);ctx.fillRect(px+16-Math.round(w*3),py+21,10,1);
+ if(((x*7+y*3)&3)===0){const b=(tick/30+x)%1;ctx.fillStyle='rgba(170,200,120,'+(.5-b*.5)+')';ctx.fillRect(px+10,py+22-b*10,2,2)}}
+// bone altar: a slab of stone ringed with candles and skulls
+function drawAltar(px,py){
+ ctx.fillStyle='rgba(0,0,0,.4)';ctx.beginPath();ctx.ellipse(px+16,py+27,14,4,0,0,6.3);ctx.fill();
+ ctx.fillStyle='#6a6a72';ctx.fillRect(px+4,py+14,24,12);ctx.fillStyle='#8a8a94';ctx.fillRect(px+4,py+12,24,4);ctx.fillStyle='#4a4a52';ctx.fillRect(px+4,py+24,24,3);
+ ctx.fillStyle='#a02828';ctx.fillRect(px+13,py+17,6,3);ctx.fillRect(px+15,py+20,2,4);
+ ctx.fillStyle='#cfc8a8';ctx.fillRect(px+5,py+8,5,4);ctx.fillRect(px+22,py+8,5,4);ctx.fillStyle='#1a1410';ctx.fillRect(px+6,py+10,1,1);ctx.fillRect(px+8,py+10,1,1);ctx.fillRect(px+23,py+10,1,1);ctx.fillRect(px+25,py+10,1,1);
+ const f=Math.sin(tick/6+px)*1;ctx.fillStyle='#e8e0c0';ctx.fillRect(px+13,py+9,2,5);ctx.fillRect(px+18,py+9,2,5);ctx.fillStyle='#ffb030';ctx.fillRect(px+13,py+6+f,2,3);ctx.fillRect(px+18,py+6-f,2,3)}
 function drawDecor(d,px,py,x,y){
  const seedr=seeded(x*131+y*17);
  if(d===1){ctx.fillStyle='#4a0e0e';for(let k=0;k<7;k++)ctx.fillRect(px+4+Math.floor(seedr()*20),py+6+Math.floor(seedr()*18),2*(1+Math.floor(seedr()*4)),2*(1+Math.floor(seedr()*3)));ctx.fillStyle='#6a1414';ctx.fillRect(px+12,py+12,6,4);ctx.fillStyle='rgba(255,120,120,.25)';ctx.fillRect(px+13,py+12,2,2)}
@@ -113,6 +131,7 @@ function drawFX(f,wx,wy){
   if(t===0){const below=y+1<H&&G.map[y+1][x]!==0;ctx.drawImage(below?tx.wall[v]:tx.top[v&1],px,py)}
   else{ctx.drawImage(tx.floor[v],px,py);if(G.decor[y][x])drawDecor(G.decor[y][x],px,py,x,y);
    if(t===2||t===5)drawDoor(t===5,px,py,G.map[y-1][x]===0&&G.map[y+1][x]===0);
+   if(t===8)drawMound(px,py,x,y);else if(t===9)drawSwamp(px,py,x,y);else if(t===10)drawAltar(px,py);
    if(t===7){ctx.fillStyle='#d8d0b0';for(let i=0;i<4;i++){ctx.fillRect(px+3+i*7,py+6+(i%2)*3,5,22-(i%2)*3)}ctx.fillStyle='#8a8068';ctx.fillRect(px+2,py+10,28,3);ctx.fillRect(px+2,py+20,28,3)}
    if(x===G.sD.x&&y===G.sD.y)drawStairs(px,py,true);if(x===G.sU.x&&y===G.sU.y)drawStairs(px,py,false)}
   // remembered-but-not-visible tiles dim and brighten smoothly instead of popping
@@ -194,7 +213,7 @@ function drawMinimap(p,vw,vh){
  if(!settings.minimap){MM.w=0;return}
  const s=CW<520?2:3,mx=CW-W*s-8,my=52;MM.x=mx;MM.y=my;MM.s=s;MM.w=W*s;MM.h=H*s;
  ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(mx-1,my-1,W*s+2,H*s+2);
- for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(G.seen[y][x]){const t=G.map[y][x];ctx.fillStyle=t===0?'#3a3a3a':t===2||t===5?'#a07838':'#7a6a58';ctx.fillRect(mx+x*s,my+y*s,s,s)}
+ for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(G.seen[y][x]){const t=G.map[y][x];ctx.fillStyle=t===0?'#3a3a3a':t===2||t===5?'#a07838':t===8?'#9a5a3a':t===9?'#3a6a4a':t===10?'#b0b0d0':'#7a6a58';ctx.fillRect(mx+x*s,my+y*s,s,s)}
  for(const m of G.mons)if(G.vis[m.y][m.x]){ctx.fillStyle=m.ally?'#7fd':'#e44';ctx.fillRect(mx+m.x*s-1,my+m.y*s-1,s+1,s+1)}
  ctx.fillStyle='#7f7';ctx.fillRect(mx+p.x*s-1,my+p.y*s-1,s+2,s+2);
  if(G.sD.x>=0&&G.seen[G.sD.y][G.sD.x]){ctx.fillStyle='#fc3';ctx.fillRect(mx+G.sD.x*s-1,my+G.sD.y*s-1,s+2,s+2)}

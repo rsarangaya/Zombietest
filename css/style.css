@@ -79,6 +79,10 @@ button:disabled{opacity:.45;cursor:default}
 #logFull small{color:#5a4a3a}
 #conOut{white-space:pre-wrap}
 #conIn{background:#120e0b;color:#8d6;border:1px solid #3a2f28;font:inherit;padding:6px;margin-top:6px}
+/* altar */
+#altarList{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px;max-height:34vh;overflow:auto;margin:6px 0}
+.offer{display:flex;gap:6px;align-items:center;background:#120e0b;border:1px solid #3a2f28;padding:4px;cursor:pointer;font-size:11px}.offer.on{border-color:#d8b040;background:#241a0c}.offer img{width:30px;height:30px;image-rendering:pixelated;flex:none}
+#altarOdds{font-size:12px;min-height:3.2em}
 /* title screen */
 .mainBtns{display:flex;flex-direction:column;gap:6px;max-width:260px;margin:8px auto}.mainBtns button{margin:0;padding:10px}#menu details{margin:10px 0;text-align:left}#menu summary{cursor:pointer;color:#a89a80;text-align:center}
 #exitScreen{position:fixed;inset:0;z-index:70;background:#050403;display:none;align-items:center;justify-content:center;text-align:center}#exitScreen h2{color:#a33;letter-spacing:3px}

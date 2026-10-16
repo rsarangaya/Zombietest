@@ -5,6 +5,7 @@ const closeTopWindow=()=>{ // Esc: close the top-most window; with none open, op
  if($('console').style.display==='flex')return closeConsole();
  if($('stageChoice').style.display==='flex')return; // must choose
  if($('bargain').style.display==='flex'){$('bargain').style.display='none';return}
+ if(altarOpen()){closeAltar();return}
  if($('codex').style.display==='flex'){$('codex').style.display='none';return}
  if($('manual').style.display==='flex'){$('manual').style.display='none';return}
  if($('logModal').style.display==='flex'){$('logModal').style.display='none';return}
@@ -13,7 +14,7 @@ const closeTopWindow=()=>{ // Esc: close the top-most window; with none open, op
  if($('exitScreen').style.display==='flex'){$('exitScreen').style.display='none';openMenu();return}
  if($('menu').style.display==='flex'){if($('menuRuns').style.display!=='none'){showMenuRuns(false);return}if(inRun()&&!G.over)resumeRun();return} // Esc on the menu goes back to the game
  openMenu()};
-const anyWindowOpen=()=>packIsOpen()||$('codex').style.display==='flex'||$('manual').style.display==='flex'||$('stageChoice').style.display==='flex'||$('bargain').style.display==='flex'||$('logModal').style.display==='flex'||$('console').style.display==='flex'||$('menu').style.display==='flex';
+const anyWindowOpen=()=>packIsOpen()||$('codex').style.display==='flex'||$('manual').style.display==='flex'||$('stageChoice').style.display==='flex'||$('bargain').style.display==='flex'||altarOpen()||$('logModal').style.display==='flex'||$('console').style.display==='flex'||$('menu').style.display==='flex';
 addEventListener('keydown',e=>{
  if(!e.key||e.ctrlKey||e.metaKey||e.altKey)return;
  if(e.key==='`'){e.preventDefault();con.modal.style.display==='flex'?closeConsole():openConsole();return}
@@ -103,6 +104,7 @@ $('pack').addEventListener('pointerdown',e=>{if(e.target===$('pack'))closePack()
 $('bLog').onclick=openLog;
 $('logClose').onclick=()=>{$('logModal').style.display='none'};
 $('mClose').onclick=resumeRun;
+$('altarGo').onclick=makeOffering;$('altarLeave').onclick=closeAltar;
 $('mContinue').onclick=()=>showMenuRuns(true);$('mRunsBack').onclick=()=>showMenuRuns(false);
 $('mNewGame').onclick=newGameClick;$('mExit').onclick=exitGame;$('exitBack').onclick=()=>{$('exitScreen').style.display='none';openMenu()};
 $('bgYes').onclick=()=>chooseBargain(true);$('bgNo').onclick=()=>chooseBargain(false);$('bgCancel').onclick=()=>{$('bargain').style.display='none'};
@@ -124,7 +126,7 @@ function tipFor(x,y){
  const m=G.mons.find(m=>m.x===x&&m.y===y);if(m&&G.vis[y][x])return `${m.n}${m.ally?' (yours)':''} · HP ${m.hp}/${m.max}${m.alert?'':' · asleep'}`;
  const its=G.items.filter(i=>i.x===x&&i.y===y);if(its.length)return its.map(i=>i.it.name+(i.it.count>1?' x'+i.it.count:'')).join(', ');
  if(x===G.sD.x&&y===G.sD.y)return 'Stairs down';if(x===G.sU.x&&y===G.sU.y)return 'Stairs up';
- const t=G.map[y][x];return t===2||t===5?'Door':t===7?'Bone barricade':''}
+ const t=G.map[y][x];return t===2||t===5?'Door':t===7?'Bone barricade':t===10?'Altar - bump to make an offering':t===8?'Pile of bodies - bump to search':t===9?'Swamp - slows you':''}
 cv.addEventListener('pointermove',e=>{
  if(e.pointerType!=='mouse'||paused||G.over||dragging||pointers.size||mmDrag!=null||mmHit(e)){tip.style.display='none';return}
  const {x,y}=screenTile(e.clientX,e.clientY),s=tipFor(x,y);

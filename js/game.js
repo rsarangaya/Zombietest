@@ -5,11 +5,14 @@ function playerAct(dx,dy){
   if(dx)p.face=dx;const nx=p.x+dx,ny=p.y+dy,m=monAt(nx,ny);
   const ally=m&&m.ally?m:null;
   if(m&&!ally){attack(m);acted=true}
+  else if(G.map[ny]&&G.map[ny][nx]===8){searchMound(nx,ny);acted=true} // bump a pile of bodies to search it
+  else if(G.map[ny]&&G.map[ny][nx]===10){openAltar(nx,ny)} // bumping the altar opens the offering window (no turn passes)
   else if(walk(nx,ny)){
    if(ally)setPos(ally,p.x,p.y); // you swap places with your minions
    if(nx===G.sD.x&&ny===G.sD.y){stopTravel();changeLevel(1);ui();return}
    if(nx===G.sU.x&&ny===G.sU.y){stopTravel();if(G.depth===1){msg('Rubble seals the way up. There is only down.','warn');return}changeLevel(-1);ui();return}
-   setPos(p,nx,ny);moved=true;acted=true;sfx('step');if(G.map[ny][nx]===2){G.map[ny][nx]=5;sfx('door')}
+   setPos(p,nx,ny);moved=true;acted=true;
+   {const rr=G.rooms.find(r=>nx>=r.x&&nx<r.x+r.w&&ny>=r.y&&ny<r.y+r.h);if(rr&&rr.theme&&!rr.said){rr.said=true;announceTheme(rr)}}sfx('step');if(G.map[ny][nx]===2){G.map[ny][nx]=5;sfx('door')}
    // a lone item is grabbed automatically; a pile is left for the player to pick through (see the ground panel)
    const here=G.items.filter(i=>i.x===nx&&i.y===ny);
    if(here.length===1){const e=here[0],it=e.it;if(addInv(it)){G.items.splice(G.items.indexOf(e),1);msg(`You grab: ${it.name}${it.count>1?' x'+it.count:''}.`,'good');sfx('pickup');stopTravel()}else msg('Backpack full.','warn')}
@@ -27,7 +30,8 @@ function endTurn(moved,waited){
  computeFOV();tickDots();if(G.over||paused)return;
  let free=false,slowed=false;
  if(moved){
-  if(fx('sprint')&&p.rest>=5){free=true;msg('You sprint!','good')}
+  if(G.map[p.y][p.x]===9){slowed=true;G.floaters.push({x:p.x,y:p.y,t:'mire',c:'#7a9a5a',l:18})} // wading through a swamp: monsters get an extra step
+  else if(fx('sprint')&&p.rest>=5){free=true;msg('You sprint!','good')}
   else if(p.burst>0){p.burst--;free=true}
   else if(s.spd>0&&R()<s.spd)free=true;
   else if(s.spd<0&&R()<-s.spd)slowed=true;
@@ -81,13 +85,15 @@ function kill(m){
  if(m.mini||m.k==='boss'||R()<(PART_CHANCE[m.k]||0)){
   const it=mkMonsterPart(m,m.k==='boss'?MAX_DEPTH:m.mini?G.depth+2:G.depth);
   G.items.push({x:m.x,y:m.y,it});msg(`The ${m.n} leaves a body part: ${it.name}.`,'good')}
+ if(m.loot){const it=mkCons(pick(m.loot));G.items.push({x:m.x,y:m.y,it});msg(`The ${m.n} was carrying: ${it.name}.`,'good')} // swamp natives always drop supplies
  if(!m.mini&&m.k!=='boss'&&(G.dropCounts[G.depth]||0)<3&&R()<m.drop){
   G.dropCounts[G.depth]=(G.dropCounts[G.depth]||0)+1;const it=mkLoot(G.depth,m.k,0);
   G.items.push({x:m.x,y:m.y,it});msg(`It left something: ${it.name}.`,'info')}
  if(m.k==='boss')win()}
 function hurt(n){const p=G.p;if(G.god)return;p.cloak=0;p.hp-=n;sfx('hurt');if(settings.haptics&&navigator.vibrate)try{navigator.vibrate(Math.min(70,20+n*6))}catch(e){}G.floaters.push({x:p.x,y:p.y,t:'-'+n,c:'#f44',l:25});blood(p.x,p.y,8,'#6a8a3a');G.shake=Math.min(10,3+n/2);stopTravel()}
 // a monster's step is queued for animation with a small stagger so a crowd ripples instead of all snapping at once
-function moveMon(m,x,y){setPos(m,x,y);m.delay=G.mstag;G.mstag=Math.min(170,G.mstag+40)}
+function moveMon(m,x,y){if(G.map[y][x]===9&&!m.swamp)m.en-=1; // non-natives lose a step wading through the mire
+ setPos(m,x,y);m.delay=G.mstag;G.mstag=Math.min(170,G.mstag+40)}
 const cheb=(a,b)=>Math.max(Math.abs(a.x-b.x),Math.abs(a.y-b.y));
 function freeAdj(o){const c=[];for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const x=o.x+dx,y=o.y+dy;if((dx||dy)&&walk(x,y)&&!monAt(x,y)&&!(x===G.p.x&&y===G.p.y)&&!(x===G.sU.x&&y===G.sU.y)&&!(x===G.sD.x&&y===G.sD.y))c.push({x,y})}return c.length?pick(c):null}
 // step to the neighbouring tile that puts the most distance between m and the player
@@ -148,7 +154,7 @@ function monstersAct(moveOnly){
   if(moveOnly&&m.warning)continue; // extra move-only pass never resolves a telegraphed attack early
  if(m.warning){const w=m.warning;m.warning=null;
   if(p.x===w.x&&p.y===w.y&&los(m.x,m.y,p.x,p.y)&&Math.max(Math.abs(p.x-m.x),Math.abs(p.y-m.y))<=(w.ranged?m.rng||6:1)){
-   if(w.ranged){const rk={rifleman:["bullet","#ffd070"],scientist:["lob","#9ad030"],acolyte:["bolt","#c060ff"],cultist:["bolt","#ffd040"]}[m.k]||["bolt","#ff7040"];addFX(rk[0],{org:m,tgt:p,col:rk[1],life:rk[0]==="bullet"?14:rk[0]==="lob"?24:18})}else G.attackFX.push({x:m.x,y:m.y,tx:w.x,ty:w.y,life:18,max:18,ranged:false});mattack(m,s,w.ranged);
+   attackFx(m,w.ranged,w.x,w.y);mattack(m,s,w.ranged,1.5); // the telegraphed blow: slower, but it hits much harder
   }else msg(`The ${m.n}'s attack strikes empty stone.`,'info');
   continue;
  }
@@ -162,8 +168,8 @@ function monstersAct(moveOnly){
    if(m.role&&!moveOnly){const r=roleAct(m,cd);if(r==='acted')break;if(r==='moved')continue}
    if(m.erratic&&cd>1&&!rooted&&R()<m.erratic){const dx=rnd(-1,1),dy=rnd(-1,1);if(walk(m.x+dx,m.y+dy)&&!monAt(m.x+dx,m.y+dy)&&!(m.x+dx===p.x&&m.y+dy===p.y)){moveMon(m,m.x+dx,m.y+dy);if(dx)m.fx=dx}continue}
    if(m.rng&&cd<=2&&!rooted&&!moveOnly&&sees&&R()<.55&&stepAway(m,p))continue; // ranged units back off to keep their distance
-   if(cd<=1){m.fx=Math.sign(p.x-m.x)||m.fx;if(!moveOnly)warnAttack(m,false);break}
-   if(m.rng&&sees&&cd<=m.rng&&los(m.x,m.y,p.x,p.y)){if(!moveOnly)warnAttack(m,true);break}
+   if(cd<=1){m.fx=Math.sign(p.x-m.x)||m.fx;if(!moveOnly)engage(m,s,false);break}
+   if(m.rng&&sees&&cd<=m.rng&&los(m.x,m.y,p.x,p.y)){if(!moveOnly)engage(m,s,true);break}
    if(rooted)break;
    let best=null,bd=D[m.y][m.x];
    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){if(!dx&&!dy)continue;const nx=m.x+dx,ny=m.y+dy;
@@ -191,15 +197,24 @@ function reekCheck(){
   if(pos){spawn('stalker',pos,{alert:true,grp:-1});G.reek[G.depth]=1;msg('THE REEK has found you.','bad');sfx('death');G.shake=8;showHint('THE REEK: relentless and strong. Run, or kill it for a guaranteed graft.')}}}
 function worldTick(){
  for(const b of [...(G.barr||[])])if(G.turn>=b.t){if(G.map[b.y][b.x]===7)G.map[b.y][b.x]=1;G.barr.splice(G.barr.indexOf(b),1)}
- bossTick();reekCheck()}function warnAttack(m,ranged){m.warning={x:G.p.x,y:G.p.y,ranged};stopTravel();sfx('warn');hintOnce('warning');msg(`The ${m.n} prepares ${ranged?'a hex':'a heavy blow'}! Move off the red tile.`,'warn')}
-function mattack(m,s,ranged){
+ bossTick();reekCheck()}// A monster's attack is either a quick strike that lands right away (lighter, and stepping aside cannot dodge it) or, some of the
+// time, a telegraphed HEAVY blow: a red tile now, a much harder hit next turn. `heavy` is the chance of the heavy kind per monster.
+function attackFx(m,ranged,tx,ty){
+ if(ranged){const rk={rifleman:["bullet","#ffd070"],scientist:["lob","#9ad030"],acolyte:["bolt","#c060ff"],cultist:["bolt","#ffd040"]}[m.k]||["bolt","#ff7040"];addFX(rk[0],{org:m,tgt:G.p,col:rk[1],life:rk[0]==="bullet"?14:rk[0]==="lob"?24:18})}
+ else G.attackFX.push({x:m.x,y:m.y,tx,ty,life:18,max:18,ranged:false})}
+function engage(m,s,ranged){
+ const heavy=m.heavy!==undefined?m.heavy:.35;
+ if(R()<heavy){warnAttack(m,ranged);return}
+ attackFx(m,ranged,G.p.x,G.p.y);mattack(m,s,ranged,.8)}
+function warnAttack(m,ranged){m.warning={x:G.p.x,y:G.p.y,ranged};stopTravel();sfx('warn');hintOnce('warning');msg(`The ${m.n} prepares ${ranged?'a hex':'a heavy blow'}! Move off the red tile.`,'warn')}
+function mattack(m,s,ranged,mult=1){
  const p=G.p;
  if(!ranged)lunge(m,p.x,p.y);
  if(R()<.15){msg(`The ${m.n} misses you.`);return}
  const dg=fx('dodge');if(dg&&R()<.1*dg){msg(`You sway aside from the ${m.n}.`,'good');return}
- const roll=rnd(m.a[0],m.a[1])+Math.floor(G.depth/4);let d=Math.max(1,Math.ceil(roll*.25),roll-s.def);
+ const roll=Math.max(1,Math.round((rnd(m.a[0],m.a[1])+Math.floor(G.depth/4))*mult));let d=Math.max(1,Math.ceil(roll*.25),roll-s.def);
  if(fx('ward')&&!G.ward[G.depth]){G.ward[G.depth]=true;d=Math.max(1,Math.ceil(d/2));msg('Your bone ward absorbs half the blow.','info')}
- hurt(d);msg(`${ranged?'A hex from the':'The'} ${m.n} ${ranged?'sears':'rips'} you for ${d}.`,'bad');
+ hurt(d);msg(`${ranged?(mult>1?'A hex from the':'A shot from the'):'The'} ${m.n} ${ranged?(mult>1?'sears':'strikes'):(mult>1?'rips':'hits')} you for ${d}.`,'bad');
  if(m.role==='leech'&&!G.god){p.drain=Math.min(10,(p.drain||0)+1);msg('The leech siphons your marrow. (max HP -1)','bad')}
  if(ranged)for(let i=0;i<8;i++)G.parts.push({x:m.x*T+16,y:m.y*T+16,vx:(p.x-m.x)*2+R()-.5,vy:(p.y-m.y)*2+R()-.5,l:14,c:'#ffd040',s:2});
  const th=fx('thorns');if(!ranged&&th){m.hp-=th;G.floaters.push({x:m.x,y:m.y,t:'-'+th,c:'#9c3',l:20});if(m.hp<=0)kill(m)}

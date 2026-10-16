@@ -45,12 +45,14 @@ function genLevel(d){
  G.vis=Array.from({length:H},()=>new Array(W).fill(false));G.seen=Array.from({length:H},()=>new Array(W).fill(false));
  G.shade=Array.from({length:H},()=>Array.from({length:W},()=>R()));
  G.decor=Array.from({length:H},(_,y)=>Array.from({length:W},(_,x)=>{if(G.map[y][x]!==1)return 0;const r=R();return r<.06?1:r<.1?2:r<.13?3:r<.17?4:r<.2?5:0}));
- G.items=[];G.mons=[];G.torches=[];G.barr=[];
+ G.items=[];G.mons=[];G.torches=[];G.barr=[];G.mounds=[];
  G.sU={x:rs[0].cx,y:rs[0].cy};const last=rs[rs.length-1];G.sD=d<MAX_DEPTH?{x:last.cx,y:last.cy}:{x:-1,y:-1};
+ assignThemes(d); // some rooms become themed (body dump, swamp, maggot nest); ordinary loot and monsters avoid them
+ const plain=()=>{const p=rs.slice(1).filter(r=>!r.theme);return p.length?p:rs.slice(1)};
  for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++)if(G.map[y][x]===0&&G.map[y+1][x]===1&&R()<.07&&!G.torches.some(t=>Math.abs(t.x-x)<4&&Math.abs(t.y-y)<4))G.torches.push({x,y});
  const free=r=>{for(let i=0;i<30;i++){const x=rnd(r.x,r.x+r.w-1),y=rnd(r.y,r.y+r.h-1);
   if(G.map[y][x]===1&&Math.abs(x-G.sU.x)+Math.abs(y-G.sU.y)>2&&Math.abs(x-G.sD.x)+Math.abs(y-G.sD.y)>1&&!G.items.some(i=>i.x===x&&i.y===y)&&!monAt(x,y))return{x,y}}return null};
- const put=it=>{const f=free(pick(rs.slice(1)));if(f)G.items.push({...f,it});return !!f};
+ const put=it=>{const f=free(pick(plain()));if(f)G.items.push({...f,it});return !!f};
  // first floor of every stage: the arrival room is a "waste room" stocked with a few free, clean goodies
  if((d-1)%STAGE_LEN===0)stockWasteRoom(d,rs[0],free);
  const mod=MODS[(G.mods&&G.mods[G.regIdx])||'standard']||MODS.standard; // stage variant chosen at the previous stage boundary
@@ -62,11 +64,13 @@ function genLevel(d){
  // stage-end bosses guard the way down (floors 5, 10, 15) and the final floor holds The Surgeon with human guards
  const MINI={5:'warden',10:'matron',15:'abomination'};
  if(MINI[d]){const f=free(last);if(f)spawn(MINI[d],f)}
- if(d===MAX_DEPTH){const f=free(last);if(f)spawn('boss',f);for(const k of ['guard','guard','rifleman','scientist']){const f2=free(pick(rs.slice(1)));if(f2)spawn(k,f2)}}
+ if(d===MAX_DEPTH){const f=free(last);if(f)spawn('boss',f);for(const k of ['guard','guard','rifleman','scientist']){const f2=free(pick(plain()));if(f2)spawn(k,f2)}}
  // monsters come in room packs: one wake-up call rouses the whole room (see monstersAct)
  let left=Math.round((rnd(6,9)+Math.floor(d/4))*mod.mon),guard=0;const pool=types.length?types:['golem'];
- while(left>0&&guard++<80){const r=pick(rs.slice(1)),k0=pick(pool),size=Math.min(left,rnd(1,3));
-  for(let i=0;i<size;i++){const f=free(r);if(!f)break;spawn(R()<.6?k0:pick(pool),f);left--}}}// Waste room: 2-3 randomized, untainted goodies (usually a graft, plus supplies) near the stage's start.
+ while(left>0&&guard++<80){const r=pick(plain()),k0=pick(pool),size=Math.min(left,rnd(1,3));
+  for(let i=0;i<size;i++){const f=free(r);if(!f)break;spawn(R()<.6?k0:pick(pool),f);left--}}
+ populateThemes(d,pool,free)}
+// Waste room: 2-3 randomized, untainted goodies (usually a graft, plus supplies) near the stage's start.
 function stockWasteRoom(d,r,free){
  for(let y=r.y;y<r.y+r.h;y++)for(let x=r.x;x<r.x+r.w;x++)if(G.map[y][x]===1&&R()<.4)G.decor[y][x]=pick([1,3,3,5]); // scattered gore, bones and rubble
  const clean=p=>{p.taint='';p.known=true;return p};
@@ -74,7 +78,55 @@ function stockWasteRoom(d,r,free){
  if(R()<.6){let g=clean(mkPart(d+1)),tries=0;while(g.kind===items[0].kind&&tries++<8)g=clean(mkPart(d+1));items.push(g)}
  const sup=['flask','flask','scrap','scrap','shards','brine','candle'];
  while(items.length<n)items.push(mkCons(pick(sup)));
- for(const it of items){const f=free(r);if(f)G.items.push({...f,it})}}let MID=1; // unique monster ids (summoners track their minions with these)
+ for(const it of items){const f=free(r);if(f)G.items.push({...f,it})}}
+// ---------- themed rooms ----------
+// BODY DUMP: interior tiles become piles of bodies. Bump a pile to search it (one turn). Exactly one hides a graft, two or three hide
+//            an ambush, and the rest are empty, and nothing tells them apart until you dig.
+// SWAMP:     most tiles are mire: wading is slow (monsters get an extra step), but the natives carry food and potions.
+// NEST:      a pack of sleeping maggots (a brood-mother deep down) guarding a graft in the middle of the room.
+// ALTAR:     one bone altar in the middle. Bump it to offer grafts for a harsh gamble on a better one (one use).
+const THEMES=['dump','swamp','nest','altar'];
+function assignThemes(d){
+ const rs=G.rooms;if(d<2||rs.length<4)return;
+ const elig=rs.slice(1,-1).filter(r=>r.w>=5&&r.h>=5);let n=(R()<.65?1:0)+(d>=4&&R()<.4?1:0);
+ // the human stage keeps only the body dump (its swamp and nest natives are undead)
+ const pool=THEMES.filter(k=>(k!=='nest'||d>=3)&&(k!=='altar'||d>=3)&&(d<16||k==='dump')).sort(()=>R()-.5);
+ while(n-->0&&elig.length&&pool.length){const r=elig.splice(Math.floor(R()*elig.length),1)[0];r.theme=pool.shift();r.said=false}}
+function populateThemes(d,types,free){
+ const stairOk=(x,y)=>!(x===G.sU.x&&y===G.sU.y)&&!(x===G.sD.x&&y===G.sD.y);
+ for(const r of G.rooms){if(!r.theme)continue;
+  const tiles=[];for(let y=r.y;y<r.y+r.h;y++)for(let x=r.x;x<r.x+r.w;x++)if(G.map[y][x]===1&&stairOk(x,y))tiles.push({x,y});
+  if(r.theme==='dump'){
+   // interior only, so the ring around the room stays open and every door keeps its way in
+   const inner=tiles.filter(t=>t.x>r.x&&t.x<r.x+r.w-1&&t.y>r.y&&t.y<r.y+r.h-1).sort(()=>R()-.5);
+   const n=Math.min(inner.length,rnd(6,8)),foes=Math.min(rnd(2,3),n-1);
+   for(let i=0;i<n;i++){const t=inner[i],k=i===0?'graft':i<=foes?'foe':'empty',mound={x:t.x,y:t.y,k};
+    if(k==='graft')mound.it=mkPart(d+1);else if(k==='foe')mound.foe=pick(types.filter(x=>!MON[x].mini&&MON[x].role!=='wail')||types)||'maggot';
+    G.mounds.push(mound);G.map[t.y][t.x]=8}
+   for(const t of tiles)if(G.map[t.y][t.x]===1&&R()<.35)G.decor[t.y][t.x]=pick([1,3,3])}
+  else if(r.theme==='swamp'){
+   const cnt=rnd(3,5);for(let i=0;i<cnt;i++){const f=free(r);if(f)spawn(d>=6&&R()<.4?'mirebrute':'toad',f)} // before the tiles turn to mire
+   for(const t of tiles)if(G.map[t.y][t.x]===1&&R()<.78&&!G.items.some(i=>i.x===t.x&&i.y===t.y))G.map[t.y][t.x]=9}
+  else if(r.theme==='altar'){
+   if(stairOk(r.cx,r.cy)&&G.map[r.cy][r.cx]===1)G.map[r.cy][r.cx]=10;
+   for(const t of tiles)if(G.map[t.y][t.x]===1&&R()<.3)G.decor[t.y][t.x]=pick([1,3,3,5])}
+  else if(r.theme==='nest'){
+   const broodmother=d>=8,cnt=broodmother?4:rnd(6,8);
+   if(broodmother){const f=free(r);if(f)spawn('broodmother',f)}
+   for(let i=0;i<cnt;i++){const f=free(r);if(f)spawn('maggot',f)}
+   const cx=r.cx,cy=r.cy;if(stairOk(cx,cy)&&G.map[cy][cx]===1)G.items.push({x:cx,y:cy,it:mkPart(d+2)});
+   for(const t of tiles)if(R()<.5)G.decor[t.y][t.x]=pick([1,2,3])}}}
+// bump into a pile of bodies: dig through it
+function searchMound(x,y){
+ const i=G.mounds.findIndex(m=>m.x===x&&m.y===y);G.map[y][x]=1;G.decor[y][x]=pick([1,3]);if(i<0)return;
+ const m=G.mounds.splice(i,1)[0];sfx('door');hintOnce('dump');
+ if(m.k==='graft'){G.items.push({x,y,it:m.it});msg('You dig through the pile and find something stitched into the rot!','good');sfx('pickup');addFX('heal',{org:{x,y,rx:x,ry:y},life:26})}
+ else if(m.k==='foe'){msg('The bodies heave. Something was waiting in the pile!','bad');spawn(m.foe,{x,y},{alert:true});stopTravel();G.shake=Math.max(G.shake,4);sfx('warn');addFX('puff',{org:{x,y,rx:x,ry:y},col:'#8a7a60',r:26,life:28})}
+ else msg(pick(['Just bones and rotten cloth.','Nothing but meat gone to soup.','A tangle of the long dead. Nothing here.']),'info')}
+function announceTheme(r){
+ const say={altar:'A bone altar. Bump it to offer grafts: the more and the better you give, the better your odds. Nothing is guaranteed, and it works once.',dump:'A body dump. Some of these piles hide more than rot: bump a pile to search it.',swamp:'A stagnant swamp. Wading is slow, but what lives here carries supplies.',nest:'A maggot nest! Something valuable gleams in the middle, and the whole room is crawling.'}[r.theme];
+ msg(say,'warn');hintOnce(r.theme)}
+let MID=1; // unique monster ids (summoners track their minions with these)
 function spawn(k,pos,extra){const t=MON[k],hp=t.hp+Math.floor(G.depth/3);
  const grp=G.rooms?G.rooms.findIndex(r=>pos.x>=r.x&&pos.x<r.x+r.w&&pos.y>=r.y&&pos.y<r.y+r.h):-1;
  const m={...t,k,id:MID++,grp,x:pos.x,y:pos.y,rx:pos.x,ry:pos.y,q:[],hp,max:hp,en:0,alert:false,fx:1,bleed:0,poison:0,stun:0,...(extra||{})};G.mons.push(m);return m}
@@ -95,7 +147,7 @@ function changeLevel(dir,force){
  if(G.turn>0||d>1)msg(dir>0?`You descend into ${G.reg.n}. Depth ${d}.`:`You climb back to depth ${d}.`,'info');
  if(!existing&&(d-1)%STAGE_LEN===0){const st=G.regIdx+1;showHint(`STAGE ${st}: ${G.reg.n.toUpperCase()}`+(st===STAGES?' - the survivors are human, and armed.':''));if(d>1)msg('You arrive in a waste room. The dead dump their leavings here: take what you need.','info');else msg('Something has been dumped in this waste room. Take what you can.','info')}}
 const monAt=(x,y)=>G.mons.find(m=>m.x===x&&m.y===y);
-const walk=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&G.map[y][x]!==0&&G.map[y][x]!==7; // 7 = bone barricade (temporary wall)
+const walk=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&G.map[y][x]!==0&&G.map[y][x]!==7&&G.map[y][x]!==8&&G.map[y][x]!==10; // 7 = bone barricade, 8 = pile of bodies, 10 = altar (all block movement)
 const opaque=(x,y)=>x<0||y<0||x>=W||y>=H||G.map[y][x]===0||G.map[y][x]===2;
 function computeFOV(){
  const p=G.p,r=stat().sight;for(const row of G.vis)row.fill(false);

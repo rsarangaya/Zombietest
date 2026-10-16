@@ -148,30 +148,32 @@ function mkLoot(depth,src,partChance){
 const STAGE_LEN=5,STAGES=4,MAX_DEPTH=STAGE_LEN*STAGES;
 const REG=[{n:'The Cesspits',w:'#46564a',f:'#2c352d',t:'#141a15',acc:'#4a7a4a'},{n:'The Ossuary',w:'#625c4e',f:'#3a362c',t:'#1c1a14',acc:'#c8b878'},{n:'The Crematorium',w:'#6a4234',f:'#3d2820',t:'#20120d',acc:'#e86a28'},{n:'The Facility',w:'#4a5a68',f:'#2a333c',t:'#12171c',acc:'#6ab0d0'}];
 const MON={
-maggot:{n:'Grave Maggot',hp:6,a:[1,3],spd:1,food:12,xp:3,d:[1,6],drop:.12},
-crow:{n:'Carrion Crow',hp:7,a:[2,4],spd:2,food:18,xp:5,d:[2,9],drop:.15,erratic:.3},
+maggot:{heavy:.2,n:'Grave Maggot',hp:6,a:[1,3],spd:1,food:12,xp:3,d:[1,6],drop:.12},
+crow:{heavy:.25,n:'Carrion Crow',hp:7,a:[2,4],spd:2,food:18,xp:5,d:[2,9],drop:.15,erratic:.3},
 cultist:{n:'Hollow Zealot',hp:13,a:[3,6],spd:1,food:35,xp:9,d:[4,14],drop:.20,rng:5,sight:7},
 bloat:{n:'Gore Bloat',hp:15,a:[2,5],spd:.5,food:28,xp:7,d:[5,12],drop:.18,burst:1},
-golem:{n:'Flesh Golem',hp:32,a:[5,9],spd:1,food:50,xp:20,d:[9,15],drop:.25},
+golem:{heavy:.5,n:'Flesh Golem',hp:32,a:[5,9],spd:1,food:50,xp:20,d:[9,15],drop:.25},
 ghoul:{n:'Ravenous Ghoul',hp:14,a:[3,6],spd:1.5,food:30,xp:11,d:[7,15],drop:.20},
 acolyte:{n:'Hex Acolyte',hp:10,a:[2,5],spd:1,food:30,xp:10,d:[11,15],drop:.22,rng:6,sight:8},
-warden:{n:'The Warden',hp:55,a:[5,9],spd:1,food:70,xp:45,d:[99,99],drop:1,mini:1,tick:{every:4,fn:'rally'}},
-// support roles: they make the rest of the pack more dangerous, so priorities matter
-mender:{n:'Gravetender',hp:12,a:[2,4],spd:1,food:30,xp:12,d:[6,15],drop:.2,role:'heal',kite:1,sight:6},
-wailer:{n:'Wailing Hollow',hp:8,a:[1,3],spd:1,food:20,xp:10,d:[4,12],drop:.2,role:'wail',kite:1,sight:9},
+warden:{heavy:.5,n:'The Warden',hp:55,a:[5,9],spd:1,food:70,xp:45,d:[99,99],drop:1,mini:1,tick:{every:4,fn:'rally'}},
+// swamp-room natives: not part of the normal spawn tables; they drop supplies (food, potions) instead of grafts
+toad:{n:'Bog Toad',hp:9,a:[2,4],spd:1,food:25,xp:6,d:[99,99],drop:0,swamp:1,noParts:true,loot:['scrap','scrap','meat','flask'],sight:4,heavy:.15},
+mirebrute:{n:'Mire Brute',hp:24,a:[4,7],spd:.75,food:50,xp:18,d:[99,99],drop:0,swamp:1,noParts:true,loot:['flask','flask','brine','scrap'],sight:5,heavy:.5},// support roles: they make the rest of the pack more dangerous, so priorities matter
+mender:{heavy:.15,n:'Gravetender',hp:12,a:[2,4],spd:1,food:30,xp:12,d:[6,15],drop:.2,role:'heal',kite:1,sight:6},
+wailer:{heavy:.1,n:'Wailing Hollow',hp:8,a:[1,3],spd:1,food:20,xp:10,d:[4,12],drop:.2,role:'wail',kite:1,sight:9},
 broodmother:{n:'Brood-mother',hp:28,a:[4,7],spd:.5,food:45,xp:22,d:[8,15],drop:.25,role:'brood',sight:6},
 leech:{n:'Marrow Leech',hp:14,a:[2,5],spd:1.2,food:30,xp:14,d:[9,15],drop:.2,role:'leech',sight:6},
-medic:{n:'Field Medic',hp:20,a:[3,6],spd:1,food:40,xp:20,d:[16,20],drop:.25,role:'heal',kite:1,sight:7},
+medic:{heavy:.15,n:'Field Medic',hp:20,a:[3,6],spd:1,food:40,xp:20,d:[16,20],drop:.25,role:'heal',kite:1,sight:7},
 // the Reek: a relentless stalker that arrives when you linger on a floor too long
-stalker:{n:'The Reek',hp:46,a:[7,11],spd:1,food:80,xp:60,d:[99,99],drop:1,mini:1,noParts:true,sight:40},
+stalker:{heavy:.4,n:'The Reek',hp:46,a:[7,11],spd:1,food:80,xp:60,d:[99,99],drop:1,mini:1,noParts:true,sight:40},
 // stage-end mini-bosses (floors 10 and 15 join The Warden on floor 5)
-matron:{n:'The Matron',hp:90,a:[6,11],spd:.75,food:90,xp:60,d:[99,99],drop:1,mini:1,burst:1,tick:{every:3,fn:'spawn',k:'maggot',max:4}},
-abomination:{n:'The Abomination',hp:130,a:[9,15],spd:1,food:100,xp:90,d:[99,99],drop:1,mini:1,tick:{every:1,fn:'enrage'}},
+matron:{heavy:.4,n:'The Matron',hp:90,a:[6,11],spd:.75,food:90,xp:60,d:[99,99],drop:1,mini:1,burst:1,tick:{every:3,fn:'spawn',k:'maggot',max:4}},
+abomination:{heavy:.5,n:'The Abomination',hp:130,a:[9,15],spd:1,food:100,xp:90,d:[99,99],drop:1,mini:1,tick:{every:1,fn:'enrage'}},
 // stage 4 is human
-guard:{n:'Armed Guard',hp:34,a:[7,11],spd:1,food:60,xp:24,d:[16,20],drop:.25},
+guard:{heavy:.4,n:'Armed Guard',hp:34,a:[7,11],spd:1,food:60,xp:24,d:[16,20],drop:.25},
 rifleman:{n:'Rifleman',hp:22,a:[6,10],spd:1,food:45,xp:22,d:[16,20],drop:.25,rng:6,sight:8},
 scientist:{n:'Mad Scientist',hp:18,a:[5,9],spd:1,food:40,xp:20,d:[16,20],drop:.28,rng:5,erratic:.2,sight:7},
-boss:{n:'The Surgeon',hp:150,a:[9,15],spd:1,food:100,xp:150,d:[99,99],drop:1,tick:{every:4,fn:'reinforce',k:['guard','rifleman','medic'],max:5}}};
+boss:{heavy:.45,n:'The Surgeon',hp:150,a:[9,15],spd:1,food:100,xp:150,d:[99,99],drop:1,tick:{every:4,fn:'reinforce',k:['guard','rifleman','medic'],max:5}}};
 // Stage variants offered at each stage boundary (from floors 5, 10 and 15). Effects apply to every floor of that stage.
 const MODS={
  standard:{n:'Standard',desc:'No surprises.',mon:1,sight:0,taint:1,tier:0,loot:0,part:0},
@@ -179,4 +181,27 @@ const MODS={
  cursed:{n:'Cursed Ruin',desc:'Grafts are a tier better here, but twice as likely to be tainted.',mon:1,sight:0,taint:2.2,tier:1,loot:0,part:0},
  crypt:{n:'Dark Crypt',desc:'30% fewer monsters and an extra flask per floor, but your sight is cut by 2.',mon:.7,sight:2,taint:1,tier:0,loot:1,part:0}};
 // one-line flavour for the codex
-const LORE={maggot:'Hungry larvae that nest in anything that stops moving.',crow:'Carrion birds. They follow the smell of you.',cultist:'Penitents who hex what they cannot reach.',bloat:'Swollen with gas and rot. Do not pop it beside you.',golem:'Flesh stitched into something that never tires.',ghoul:'Starved past reason and far too fast.',acolyte:'The loudest hexers of the deep faith.',warden:"The Ossuary's keeper. It wears its prisoners.",matron:'Mother of the Crematorium. She never stops birthing.',abomination:'Many things, badly joined.',guard:'He still follows his orders.',rifleman:'Patient. He has been waiting for you.',scientist:'Still working. The notes are in his own blood.',mender:'Tends the pack. Kill it first.',wailer:'Its scream carries through stone.',broodmother:'A walking nest. Do not let it settle.',leech:'Feeds on marrow, not blood.',medic:"The Facility's last honest employee.",stalker:'It smells you. It has always smelled you.',boss:'He promised to fix you. He is still promising.'};
+const LORE={maggot:'Hungry larvae that nest in anything that stops moving.',crow:'Carrion birds. They follow the smell of you.',cultist:'Penitents who hex what they cannot reach.',bloat:'Swollen with gas and rot. Do not pop it beside you.',golem:'Flesh stitched into something that never tires.',ghoul:'Starved past reason and far too fast.',acolyte:'The loudest hexers of the deep faith.',warden:"The Ossuary's keeper. It wears its prisoners.",matron:'Mother of the Crematorium. She never stops birthing.',abomination:'Many things, badly joined.',guard:'He still follows his orders.',rifleman:'Patient. He has been waiting for you.',scientist:'Still working. The notes are in his own blood.',mender:'Tends the pack. Kill it first.',wailer:'Its scream carries through stone.',broodmother:'A walking nest. Do not let it settle.',leech:'Feeds on marrow, not blood.',medic:"The Facility's last honest employee.",stalker:'It smells you. It has always smelled you.',toad:'Fat on whatever the swamp keeps. Tastes better than it looks.',mirebrute:'Rises out of the muck. Carries more than it should.',boss:'He promised to fix you. He is still promising.'};
+
+// ---------- altar: sacrifice grafts for a gamble on a better one ----------
+// The best offered graft sets the tier to beat (M). Extra offerings raise the odds, but fodder counts for less the weaker it is
+// (a part is worth (its tier / M)^2 of a full offering), so piling on junk cannot climb the tiers cheaply. The odds stay harsh:
+// a lone offering fails outright a quarter of the time and returns something worse another quarter.
+function altarOdds(tiers){
+ const T=tiers.map(t=>Math.max(1,t)).sort((a,b)=>b-a),M=T[0];let n=1;for(let i=1;i<T.length;i++)n+=Math.pow(T[i]/M,2);
+ const dec=.05*(n-1),nothing=Math.max(.06,.25-dec),lower=Math.max(.06,.25-dec);
+ const up2=M>=5?0:Math.min(.12,.04*Math.max(0,n-2)),up1=M>=5?0:Math.min(.40,.10+.08*(n-1));
+ return {M,n,nothing,lower,up1,up2,same:1-nothing-lower-up1-up2}}
+function altarRoll(tiers){
+ const o=altarOdds(tiers),r=R();let acc=o.nothing;
+ if(r<acc)return {outcome:'nothing',tier:0};acc+=o.lower;
+ if(r<acc)return o.M<=1?{outcome:'nothing',tier:0}:{outcome:'lower',tier:o.M-1};acc+=o.same;
+ if(r<acc)return {outcome:'same',tier:o.M};acc+=o.up1;
+ if(r<acc)return {outcome:'up1',tier:Math.min(5,o.M+1)};
+ return {outcome:'up2',tier:Math.min(5,o.M+2)}}
+// a graft of exactly this tier (slot from the shared bag, strong ones scarcer)
+function mkAltarPart(tier,depth){
+ if(TPL[0].hid===undefined)computePower();
+ const kind=nextKind();let pool=TPL.filter(t=>t.kind===kind&&t.t===tier);if(!pool.length)pool=TPL.filter(t=>t.t===tier);
+ const w=pool.map(t=>HID_RARITY[t.hid]);let r=R()*w.reduce((a,b)=>a+b,0),t=pool[pool.length-1];for(let i=0;i<pool.length;i++){r-=w[i];if(r<=0){t=pool[i];break}}
+ return mkPart(depth,null,t.id)}

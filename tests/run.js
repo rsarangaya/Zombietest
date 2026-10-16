@@ -69,7 +69,7 @@ const issues=run(`(function(){const e=[];
  for(const k in CONS)if(!CONSPR[k])e.push('missing item icon '+k);
  for(const k in MON){if(!S[k])e.push('missing monster sprite '+k);const ps=TPL.filter(t=>t.src===k);if(ps.length<3&&!MON[k].noParts)e.push('monster '+k+' has only '+ps.length+' own parts');if(!ps.some(t=>t.kind==='legs')&&!['boss'].includes(k)&&!MON[k].noParts)e.push('monster '+k+' drops no legs')}
  for(const k in PART_CHANCE)if(!MON[k])e.push('PART_CHANCE for unknown monster '+k);
- for(const k in MON)if(!MON[k].mini&&k!=='boss'&&!(PART_CHANCE[k]>0))e.push('no part chance for '+k);
+ for(const k in MON)if(!MON[k].mini&&k!=='boss'&&!MON[k].noParts&&!(PART_CHANCE[k]>0))e.push('no part chance for '+k);
  const rows=[...Object.values(CONSPR)];for(const r of Object.values(REGION))for(const v of Object.values(r))rows.push(v);
  for(const r of rows)for(const line of r)for(const ch of line)if(ch!=='.'&&!'abcdefghijklmnopqrstuvwxyz'.includes(ch))e.push('odd sprite char '+ch);
  for(const t of TPL){const p=mkPart(10,null,t.id);if(p.id!==t.id)e.push('mkPart forceId failed '+t.id)}
@@ -104,5 +104,67 @@ for(const d in variety.byDepth)for(const k in variety.byDepth[d])ok(Math.abs(var
 for(const h in variety.hid)ok(variety.hid[h]>0,`hidden tier ${h} has no grafts`);
 variety.kindsWithSpread.forEach((n,i)=>ok(n>=3,`slot ${['head','torso','arm','legs'][i]} only spans ${n} hidden tiers`));
 console.log('variety: slots even across '+variety.N+' drops, hidden tiers '+JSON.stringify(variety.hid));
+// ---- 7. themed rooms and monster attack mix
+const themed=run(`(function(){
+ const out={levels:0,dump:0,swamp:0,nest:0,bad:[]};
+ for(let seed=1;seed<=400;seed++){const d=2+(seed%19);seedRng(seed*131);G={depth:d,regIdx:Math.floor((d-1)/5),rites:false,levels:{},mons:[],items:[],mods:{0:'standard'}};genLevel(d);out.levels++;
+  const rs=G.rooms;
+  // every themed room: right kind of content, never the first/last room, open ring around the dump
+  for(const [i,r] of rs.entries()){if(!r.theme)continue;out[r.theme]++;
+   if(i===0||i===rs.length-1)out.bad.push('themed first/last room');
+   const inRoom=(x,y)=>x>=r.x&&x<r.x+r.w&&y>=r.y&&y<r.y+r.h;
+   if(r.theme==='dump'){const ms=G.mounds.filter(m=>inRoom(m.x,m.y)),g=ms.filter(m=>m.k==='graft').length,f=ms.filter(m=>m.k==='foe').length;
+    if(g!==1)out.bad.push('dump '+seed+' has '+g+' grafts');if(f<2||f>3)out.bad.push('dump '+seed+' has '+f+' ambushes');if(ms.length<4)out.bad.push('dump '+seed+' too few piles');
+    for(const m of ms){if(G.map[m.y][m.x]!==8)out.bad.push('mound not on a mound tile');if(m.x===r.x||m.x===r.x+r.w-1||m.y===r.y||m.y===r.y+r.h-1)out.bad.push('mound on the room edge');if(m.k==='foe'&&!MON[m.foe])out.bad.push('bad ambusher '+m.foe)}}
+   if(r.theme==='swamp'){if(!G.mons.some(m=>m.swamp&&inRoom(m.x,m.y)))out.bad.push('swamp '+seed+' has no natives');if(d>=16)out.bad.push('swamp in the human stage')}
+   if(r.theme==='nest'){if(G.mons.filter(m=>(m.k==='maggot'||m.k==='broodmother')&&inRoom(m.x,m.y)).length<4)out.bad.push('nest '+seed+' too empty');if(d<3||d>=16)out.bad.push('nest on wrong floor')}}
+  // ordinary monsters and loot stay out of themed rooms; swamp natives only appear in swamp rooms
+  for(const m of G.mons){const r=rs.find(r=>m.x>=r.x&&m.x<r.x+r.w&&m.y>=r.y&&m.y<r.y+r.h);
+   if(m.swamp&&!(r&&r.theme==='swamp'))out.bad.push('swamp native outside a swamp');
+   if(!m.swamp&&r&&r.theme&&r.theme!=='nest'&&!['maggot','broodmother'].includes(m.k))out.bad.push('ordinary monster in a themed room: '+m.k)}
+  // the stairs must still be reachable (mounds block, everything else walks)
+  const seen=new Set([G.sU.y*W+G.sU.x]),q=[[G.sU.x,G.sU.y]];for(let i=0;i<q.length;i++){const [x,y]=q[i];for(const [a,b] of [[0,1],[0,-1],[1,0],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]]){const nx=x+a,ny=y+b;if(walk(nx,ny)&&!seen.has(ny*W+nx)){seen.add(ny*W+nx);q.push([nx,ny])}}}
+  if(G.sD.x>=0&&!seen.has(G.sD.y*W+G.sD.x))out.bad.push('stairs down unreachable with seed '+seed)}
+ return out})()`);
+for(const b of themed.bad.slice(0,10))ok(false,'themed rooms: '+b);
+ok(themed.dump>20&&themed.swamp>20&&themed.nest>10,`themed rooms too rare: ${JSON.stringify({dump:themed.dump,swamp:themed.swamp,nest:themed.nest})}`);
+console.log('themed rooms: '+JSON.stringify({dump:themed.dump,swamp:themed.swamp,nest:themed.nest})+' across '+themed.levels+' floors');
+// attacks: with the default mix most strikes are quick ones; heavy blows stay a minority and heavier hitters use them more
+const mix=run(`(function(){seedRng(77);const res={};for(const k of ['maggot','golem','cultist','boss']){let heavy=0;const N=4000;for(let i=0;i<N;i++){const h=MON[k].heavy!==undefined?MON[k].heavy:.35;if(R()<h)heavy++}res[k]=heavy/N}return res})()`);
+ok(mix.maggot<.3&&mix.golem>.4&&mix.golem<.6&&mix.cultist>.28&&mix.cultist<.42,'heavy-blow mix is off: '+JSON.stringify(mix));
+console.log('attack mix (share of heavy blows): '+JSON.stringify(mix));
+// ---- 8. altar: odds stay harsh, fodder is weak, results are real grafts, rooms are placed safely
+const altar=run(`(function(){
+ const near=(a,b)=>Math.abs(a-b)<.0001,out={bad:[]};
+ const sum=o=>o.nothing+o.lower+o.same+o.up1+o.up2;
+ for(const set of [[1],[3],[5],[2,2],[4,1,1,1],[3,3,3,3,3],[5,5,5],[1,1,1,1,1,1]]){const o=altarOdds(set);if(!near(sum(o),1)||[o.nothing,o.lower,o.same,o.up1,o.up2].some(v=>v<-1e-9))out.bad.push('odds do not sum to 1 for '+set)}
+ const one=altarOdds([3]);out.one=one;
+ if(one.nothing+one.lower<.45)out.bad.push('a lone offering is too safe');
+ if(altarOdds([3,3,3]).up1+altarOdds([3,3,3]).up2<=one.up1+one.up2)out.bad.push('more offerings do not improve the upgrade odds');
+ // junk barely helps: five tier-1 parts alongside a tier-5 add almost nothing
+ const solo=altarOdds([5]),junk=altarOdds([5,1,1,1,1]);if(junk.n>solo.n+.2)out.bad.push('fodder counts for too much');
+ // ceiling: nothing above tier 5, and a tier-5 offering can only fail or return tier 5
+ const top=altarOdds([5,5,5]);if(top.up1!==0||top.up2!==0)out.bad.push('tier 5 can be upgraded');
+ // empirical: results respect the table and never exceed tier 5
+ seedRng(4242);const N=20000,tally={nothing:0,lower:0,same:0,up1:0,up2:0};let maxTier=0,minGood=9;
+ for(let i=0;i<N;i++){const r=altarRoll([3,3]);tally[r.outcome]++;if(r.tier>maxTier)maxTier=r.tier}
+ out.tally=Object.fromEntries(Object.entries(tally).map(([k,v])=>[k,+(v/N).toFixed(3)]));out.maxTier=maxTier;
+ const ex=altarOdds([3,3]);for(const k of ['nothing','lower','same','up1','up2'])if(Math.abs(tally[k]/N-ex[k])>.02)out.bad.push('roll differs from the stated odds for '+k);
+ // tier-1 offerings cannot get a "worse" result
+ let worse=0;for(let i=0;i<2000;i++)if(altarRoll([1]).outcome==='lower')worse++;if(worse)out.bad.push('tier 1 offering returned a lower tier');
+ // rewards are real grafts of the promised tier
+ G={};for(let t=1;t<=5;t++)for(let i=0;i<60;i++){const p=mkAltarPart(t,10);if(p.tier!==t||p.type!=='part')out.bad.push('altar reward tier '+t+' came out as tier '+p.tier)}
+ // rooms
+ out.altars=0;
+ for(let seed=1;seed<=300;seed++){const d=3+(seed%13);seedRng(seed*977);G={depth:d,regIdx:Math.floor((d-1)/5),rites:false,levels:{},mons:[],items:[],mods:{0:'standard'}};genLevel(d);
+  const r=G.rooms.find(r=>r.theme==='altar');if(!r)continue;out.altars++;
+  let n=0;for(let y=r.y;y<r.y+r.h;y++)for(let x=r.x;x<r.x+r.w;x++)if(G.map[y][x]===10)n++;
+  if(n!==1)out.bad.push('altar room '+seed+' has '+n+' altars');
+  if(G.map[r.cy][r.cx]!==10)out.bad.push('altar is not in the middle');
+  if(d>=16)out.bad.push('altar in the human stage')}
+ return out})()`);
+for(const b of altar.bad.slice(0,10))ok(false,'altar: '+b);
+ok(altar.altars>15,'altar rooms too rare: '+altar.altars);
+console.log('altar: lone offering '+JSON.stringify(Object.fromEntries(Object.entries(altar.one).filter(([k])=>k!=='M'&&k!=='n').map(([k,v])=>[k,+v.toFixed(2)])))+', '+altar.altars+' altar rooms in 300 floors');
 console.log(fails?`\n${fails} of ${checks} checks FAILED`:`\nall ${checks} checks passed`);
 process.exit(fails?1:0);

@@ -38,6 +38,8 @@ S.broodmother=build(SPR.bloat,{a:'#8a6a4a',e:'#ffd070',n:'#8a6a4a'});
 S.leech=build(SPR.cultist,{a:'#6a2a6a',e:'#ff90ff',d:'#4a1a4a'});
 S.medic=build(HUMAN,{a:'#ececec',h:'#5a3a3a'});
 S.stalker=build(SPR.golem,{a:'#262634',e:'#ff2020'});
+S.toad=build(SPR.bloat,{a:'#6a8a3a',e:'#201000',n:'#6a8a3a'});
+S.mirebrute=build(SPR.golem,{a:'#4a6a4a',e:'#ffe060'});
 // ---------- body-region sprites ----------
 const SKIN='#8aa27a';
 const HEAD={ghoul:["..aaaa..",".aaaaaa.",".aeaaea.",".aaaaaa.",".awkkwa.",".awkkwa.","..aaaa.."],

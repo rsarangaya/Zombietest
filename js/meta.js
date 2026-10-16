@@ -50,7 +50,7 @@ const iconOfPart=t=>bigIcon(REGION[t.kind][t.spr],t.col,3).toDataURL();
 function monCard(k){const m=MON[k],seen=profile.seen[k];
  if(!seen)return `<div class="cx locked"><div class="unk">?</div><div><b>?????</b><br><small>Not yet encountered.</small></div></div>`;
  const own=TPL.filter(t=>t.src===k),role={heal:'Heals the monsters around it.',wail:'Shrieks to wake the whole floor.',brood:'Births maggots.',leech:'Each hit drains your max HP.'}[m.role];
- const where=m.d[0]>20?(k==='boss'?'Floor 20':k==='stalker'?'Appears if you linger':{warden:'Floor 5',matron:'Floor 10',abomination:'Floor 15'}[k]):`Floors ${m.d[0]}-${m.d[1]}`;
+ const where=m.swamp?'Swamp rooms':m.d[0]>20?(k==='boss'?'Floor 20':k==='stalker'?'Appears if you linger':{warden:'Floor 5',matron:'Floor 10',abomination:'Floor 15'}[k]):`Floors ${m.d[0]}-${m.d[1]}`;
  return `<div class="cx"><img src="${iconOfMon(k)}"><div><b>${m.n}</b> <small>${where}</small><br>HP ${m.hp} · hits ${m.a[0]}-${m.a[1]} · ${m.spd>1?'fast':m.spd<1?'slow':'normal speed'}${m.rng?` · ranged ${m.rng}`:''}<br>`+
   `<small>${LORE[k]||''}${role?' '+role:''}${m.burst?' Bursts in acid.':''}</small><br>`+
   `<small>Drops: ${own.length?own.map(t=>`<span class="${profile.parts[t.id]?'good':''}">${t.n}</span>`).join(', '):'random grafts'}</small></div></div>`}
@@ -85,6 +85,7 @@ function manualHtml(){return `
 <h3>ABILITIES</h3><p>Many grafts have an active ability. Tap an attached graft, or use its button on the action bar. Abilities take a turn and then recharge. Some, like Play Dead, Lure, Fork and Bone Barricade, change the battle rather than just hurting things.</p>
 <h3>SPEED</h3><p>Your legs set your speed. No legs, or rotten legs, slow you: monsters get extra steps. Good legs let you slip away.</p>
 <h3>MONSTERS</h3><p>Monsters live in packs: wake one and its room joins in. Each has its own sight radius. Red tiles show where a blow lands next turn. Support types change fights: <b>Gravetenders and Medics</b> heal, <b>Wailers</b> wake the floor, <b>Brood-mothers</b> spawn maggots, <b>Leeches</b> drain your max HP. Bosses call reinforcements, rally allies or enrage.</p>
+<h3>THEMED ROOMS</h3><p><b>Body dumps</b> hide a graft and ambushes in identical piles: bump a pile to search it. <b>Swamps</b> slow you but their natives drop supplies. <b>Maggot nests</b> guard a graft. An <b>altar</b> turns grafts you offer into a gamble on a better one: more and stronger offerings help, fodder helps little, and it can return nothing. It works once.</p>
 <h3>THE REEK</h3><p>Linger too long on one floor (about 140 turns) and a relentless stalker comes for you. It drops a guaranteed graft.</p>
 <h3>STAGES</h3><p>After floors 5, 10 and 15 you choose the next stage's variant: Infested Hive, Cursed Ruin, Dark Crypt or Standard.</p>
 <h3>THE BARGAIN</h3><p>Every new run offers a challenge: give up half your max HP and one random endgame graft is stitched on at the start. It rots 75% slower than anything else. The deal lasts the whole run.</p>

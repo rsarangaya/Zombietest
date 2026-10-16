@@ -156,3 +156,38 @@ function openStageChoice(){
  el.innerHTML=pool.map(k=>`<button class="mod" data-k="${k}"><b>${MODS[k].n}</b><br><small>${MODS[k].desc}</small></button>`).join('');
  for(const b of el.querySelectorAll('button'))b.onclick=()=>{G.mods[idx]=b.dataset.k;document.getElementById('stageChoice').style.display='none';paused=false;sfx('stairs');changeLevel(1,true)};
  document.getElementById('stageChoice').style.display='flex'}
+
+// ---------- altar offering window ----------
+let altarPos=null,altarSel=new Set();
+const altarEl=()=>document.getElementById('altar');
+const altarOpen=()=>altarEl().style.display==='flex';
+// everything that can be sacrificed: pack grafts and attached ones (entries are looked up again when the offer is made)
+function altarCandidates(){const p=G.p,out=[];p.inv.forEach((it,i)=>{if(it.type==='part')out.push({key:'i'+i,it,where:'pack'})});for(const k of SLOTS)if(p.eq[k])out.push({key:'e'+k,it:p.eq[k],where:'attached',slot:k});return out}
+function openAltar(x,y){if(G.over)return;stopTravel();altarPos={x,y};altarSel=new Set();hintOnce('altar');paused=true;renderAltar();altarEl().style.display='flex'}
+function closeAltar(){altarEl().style.display='none';paused=false}
+function renderAltar(){
+ const cands=altarCandidates(),el=document.getElementById('altarList');
+ document.getElementById('altarText').textContent='Offer grafts to the altar. It keeps all of them. The best one you give sets the tier to beat; more offerings improve the odds, weaker ones only a little. It can also give back less, or nothing. The altar works once.';
+ el.innerHTML='';
+ for(const c of cands){const d=document.createElement('div');d.className='offer'+(altarSel.has(c.key)?' on':'');
+  const img=document.createElement('img');img.src=itIcon(c.it).toDataURL();d.appendChild(img);
+  const tag=c.it.tier>0?`tier ${c.it.tier}`:'stitched';d.insertAdjacentHTML('beforeend',`<span>${c.it.name}<br><small>${tag} · ${c.where}</small></span>`);
+  d.onclick=()=>{altarSel.has(c.key)?altarSel.delete(c.key):altarSel.add(c.key);renderAltar()};el.appendChild(d)}
+ if(!cands.length)el.innerHTML='<p>You have no grafts to offer.</p>';
+ const chosen=cands.filter(c=>altarSel.has(c.key)),go=document.getElementById('altarGo'),od=document.getElementById('altarOdds');
+ go.disabled=!chosen.length;
+ if(chosen.length){const o=altarOdds(chosen.map(c=>c.it.tier)),pc=v=>Math.round(v*100)+'%',better=o.up1+o.up2;
+  od.innerHTML=`Offering ${chosen.length} (counts as ${o.n.toFixed(1)}) against tier ${o.M}:<br>`+
+   `<span class="bad">nothing ${pc(o.nothing)}</span> · <span class="warn">worse ${pc(o.lower)}</span> · same tier ${pc(o.same)} · <span class="good">better ${pc(better)}</span>${o.M>=5?' <small>(tier 5 is the ceiling)</small>':''}`}
+ else od.textContent='Choose the grafts to offer.'}
+function makeOffering(){
+ const p=G.p,chosen=altarCandidates().filter(c=>altarSel.has(c.key));if(!chosen.length||!altarPos)return;
+ const {x,y}=altarPos,res=altarRoll(chosen.map(c=>c.it.tier));
+ // the offering is consumed whatever happens
+ for(const c of chosen){if(c.where==='pack')p.inv[+c.key.slice(1)]=null;else p.eq[c.slot]=null}
+ p.inv=p.inv.filter(Boolean);
+ G.map[y][x]=1;G.decor[y][x]=pick([1,3,5]);sfx(res.tier?'level':'detach');closeAltar();addFX('ring',{org:{x,y,rx:x,ry:y},col:res.tier?'#ffd070':'#8a8a94',r:60,life:30});
+ if(!res.tier){msg('The altar drinks your offering and gives nothing back. It crumbles.','bad')}
+ else{const it=mkAltarPart(res.tier,G.depth);G.items.push({x,y,it});
+  msg({lower:`The altar spits out a lesser graft: ${it.name}.`,same:`The altar returns its equal: ${it.name}.`,up1:`The altar gives back something BETTER: ${it.name}!`,up2:`The altar gives back something far BETTER: ${it.name}!!`}[res.outcome],res.outcome==='lower'?'warn':'good')}
+ afterManage()}
